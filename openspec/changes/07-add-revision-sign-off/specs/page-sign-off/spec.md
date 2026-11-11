@@ -26,7 +26,7 @@ An installation on the earlier commit SHALL reach the new shape through a migrat
 - **AND** page reads, saves, and history work as before
 
 ### Requirement: Setting the mode and the approvers
-`PUT /sites/:siteId/pages/:pageId/sign-off` SHALL replace the mode and the approver list of a page. The body SHALL carry `mode`, `users`, and `groups`, the last two as lists of ids. The caller SHALL hold `manage:pages` on the page. The response SHALL be the sign-off status as the status route returns it.
+`PUT /sites/:siteId/pages/:pageId/sign-off` SHALL replace the mode and the approver list of a page. The body SHALL carry `mode`, `users`, and `groups`, the last two as lists of ids. The caller SHALL hold `manage:pages` on the page. The response SHALL be the sign-off status as the status route returns it. A page locked against edits SHALL refuse the request with 423.
 
 #### Scenario: Manager sets approve mode with a user and a group
 - **WHEN** a caller with `manage:pages` on the page sends mode `approve`, one user id, and one group id
@@ -44,6 +44,10 @@ An installation on the earlier commit SHALL reach the new shape through a migrat
 #### Scenario: Page does not exist
 - **WHEN** the page id names no page on the site
 - **THEN** the API answers 404
+
+#### Scenario: Page locked against edits
+- **WHEN** a caller with `manage:pages` on the page sends the request while the page is locked against edits
+- **THEN** the API answers 423 and the mode and the approvers stay unchanged
 
 ### Requirement: Naming approvers needs the lookup permissions
 Adding a user who is not on the list SHALL need a global `list:users` rung: `list:users`, `read:users`, `write:users`, `manage:users`, or `manage:system`. Adding a new group SHALL need `list:groups`, `read:groups`, `write:groups`, `manage:groups`, or `manage:system`. Keeping or removing an approver SHALL need neither.
@@ -110,7 +114,7 @@ A verdict SHALL name the page version it is about. The current version SHALL be 
 - **THEN** the status reports no current version and the API refuses every verdict with 409
 
 ### Requirement: Recording a verdict
-`POST /sites/:siteId/pages/:pageId/sign-off/verdict` SHALL record the caller's verdict on one version. The body SHALL carry `versionId`, `verdict` as `signed` or `changesRequested`, and `comment`. A `changesRequested` verdict SHALL need a comment of 1 to 2000 characters. A second verdict by the same person on the same version SHALL replace the first.
+`POST /sites/:siteId/pages/:pageId/sign-off/verdict` SHALL record the caller's verdict on one version. The body SHALL carry `versionId`, `verdict` as `signed` or `changesRequested`, and `comment`. A `changesRequested` verdict SHALL need a comment of 1 to 2000 characters. A second verdict by the same person on the same version SHALL replace the first. A lock against edits SHALL NOT refuse a verdict.
 
 #### Scenario: Approver signs the current version
 - **WHEN** a current approver with `read:pages` sends `signed` with the id of the current version
@@ -129,6 +133,10 @@ A verdict SHALL name the page version it is about. The current version SHALL be 
 #### Scenario: Approver changes their mind
 - **WHEN** an approver who requested changes on the current version then sends `signed` for it
 - **THEN** the status counts the approver as signed
+
+#### Scenario: Page locked against edits
+- **WHEN** a current approver sends `signed` for the current version of a page that is locked against edits
+- **THEN** the API answers 200 and the status counts the approver as signed
 
 ### Requirement: Verdict refusals
 The verdict route SHALL refuse a caller who is not signed in with 401. It SHALL answer 404 when the caller cannot read the page. It SHALL refuse a caller who is not a current approver with 403. It SHALL refuse with 409 a version id that is not the current version, a page in draft, and a page with mode `off`.

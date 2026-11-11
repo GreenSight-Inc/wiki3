@@ -8,7 +8,7 @@
 ## 2. Stored shape and migration
 
 - [ ] 2.1 In `backend/db/schema.ts`, add the table `pageWatchGroups` after `pageWatching`, as design.md D1 describes, with a doc comment. Verify: `cd backend && npm run typecheck` exits 0.
-- [ ] 2.2 Run `cd backend && npm run db-generate -- --name=page-watch-groups`. Verify: `git status --porcelain -- backend/db/migrations/` prints one new directory that ends in `_page-watch-groups`.
+- [ ] 2.2 Run `cd backend && npm run db-generate -- --name=page-watch-groups`. Verify: `git status --porcelain -- backend/db/migrations/` prints one new directory that ends in `_page-watch-groups`. Its timestamp sorts after the newest existing directory, `20261109094533_group-rule-paths`.
 - [ ] 2.3 Read the generated `migration.sql`. Verify: it holds one `CREATE TABLE "pageWatchGroups"`, the unique index `pageWatchGroups_page_group_idx`, the index `pageWatchGroups_groupId_idx`, and three foreign keys, with `ON DELETE CASCADE` on `pageId` and `groupId`. It holds no statement on `pageWatching` or any other table.
 
 ## 3. Recipients and the deletion capture
@@ -21,13 +21,13 @@
 
 - [ ] 4.1 In `backend/models/pageWatching.ts`, add `MAX_PAGE_WATCH_GROUPS`, `watchGroupsOf`, and `setWatchGroups` as design.md D5 describes. Verify: `cd backend && npm run typecheck` exits 0.
 - [ ] 4.2 In `backend/models/auditLog.ts`, add `updatePageWatchGroups` to the `page` list after `unwatchPage`. In `backend/locales/en.json`, add `admin.audit.actions.updatePageWatchGroups` next to `admin.audit.actions.updatePageOwnership`. Verify: `cd backend && npm run typecheck` exits 0.
-- [ ] 4.3 In `backend/api/watching.ts`, add `PUT /sites/:siteId/pages/:pageId/watch-groups` as design.md D7 describes. Give it a summary, tags `['Pages']`, a description that names the permissions, the body schema, and the 200 schema with `GroupLookup#`. Verify: `cd backend && npm run typecheck` exits 0 and `cd backend && npx oxlint` exits 0.
+- [ ] 4.3 In `backend/api/watching.ts`, add `PUT /sites/:siteId/pages/:pageId/watch-groups` as design.md D7 describes. Call `WIKI.models.pages.assertEditable(page)` after the `write:pages` check, as `backend/api/pageOwners.ts` does. Give it a summary, tags `['Pages']`, a description that names the permissions, the body schema, and the 200 schema with `GroupLookup#`. Verify: `cd backend && npm run typecheck` exits 0 and `cd backend && npx oxlint` exits 0.
 - [ ] 4.4 In `backend/api/pages.ts`, add `watchGroups` to the single-page answer as design.md D8 describes. In `backend/api/schemas/page.ts`, add the `watchGroups` property next to `ownership`. Keep the uncommitted `printQrCode` work in both files as it is. Verify: `git diff backend/api/pages.ts backend/api/schemas/page.ts` still shows the `printQrCode` lines, and `cd backend && npm run typecheck` exits 0.
 
 ## 5. Page properties panel
 
 - [ ] 5.1 In `frontend/src/stores/editor.js`, add `watchGroups: null` and count it in `hasPendingChanges` only, as design.md D9 says. Reset it where `ownership` is reset. Verify: `cd frontend && npx oxlint` exits 0.
-- [ ] 5.2 In `frontend/src/stores/page.js`, add `watchGroups: null` beside `ownership` in the state and in each reset, add `pageSaveWatchGroups`, and extend `pageSave` as design.md D9 says. Keep the uncommitted `printQrCode` lines. Verify: `cd frontend && npx oxlint` exits 0.
+- [ ] 5.2 In `frontend/src/stores/page.js`, add `watchGroups: null` beside `ownership` in the state and in each reset, add `pageSaveWatchGroups` with an object `$patch`, and extend `pageSave` as design.md D9 says. Keep the uncommitted `printQrCode` lines. Verify: `cd frontend && npx oxlint` exits 0.
 - [ ] 5.3 In `frontend/src/components/PagePropertiesDialog.vue`, add the section `refCardWatchGroups` and its `quickaccess` entry as design.md D9 says. Add the four `editor.props.watchGroups*` keys of design.md D10 to `backend/locales/en.json` next to `editor.props.visibility`. Verify: `cd frontend && npm run build` exits 0.
 
 ## 6. Local check set

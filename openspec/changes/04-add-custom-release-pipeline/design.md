@@ -9,23 +9,23 @@ See proposal.md, section Why, for the motivation. This section names only the fa
 - `dev/build/Dockerfile` copies `assets/` and `blocks/compiled/` from the build context. It does not build them. The pipeline therefore builds both before the image build, as upstream does.
 - Change 01 adds the build args `BUILD_BRANCH`, `BUILD_COMMIT`, and `BUILD_COMMIT_DATE` to the Dockerfile. That code exists as uncommitted work. With a commit or a branch set, the Dockerfile writes `/wiki/build.json`. `backend/helpers/buildInfo.ts` (also uncommitted) reads it at boot.
 - The 2.x reference workflow (`~/greensight/wiki/.github/workflows/release-fork.yml`) triggers on `v*`, stamps `<upstream>_jpN`, pushes `ghcr.io/<owner>/wiki:<version>` and `:latest`, and passes `GIT_BRANCH=$GITHUB_REF_NAME`. On a tag push that value is the tag, not the branch.
-- The 2.x fork guide (`dev/docs/fork-features.md`, release `v2.5.314_jp3`) records that the `_jpN` suffix crashed the 2.x version compare.
-- The working copy is upstream tag `3.1.0` plus two commits. Upstream tags carry no `v` prefix (`3.0.0`, `3.0.1`, `3.0.2`, `3.1.0`).
-- `git remote -v` names only `https://github.com/requarks/wiki`. The fork repository for 3.x is unknown.
+- The 2.x fork guide (`dev/docs/fork-features.md` in the 2.x fork repository, release `v2.5.314_jp3`) records that the `_jpN` suffix crashed the 2.x version compare.
+- The working copy is upstream tag `3.3.1` plus one commit (`git describe --tags` gives `3.3.1-1-gc92e4214`). Upstream tags carry no `v` prefix (`3.0.0` to `3.0.2`, `3.1.0`, `3.1.1`, `3.2.0`, `3.3.0`, `3.3.1`).
+- `git remote -v` names `origin`, the fork `https://github.com/GreenSight-Inc/wiki3.git`, and `upstream`, `https://github.com/requarks/wiki` with push disabled. The default branch of the fork is `scarlett`, the same name as the upstream branch that `build.yml` builds.
 
-### How the running wiki reads its version (code read on 2026-11-10)
+### How the running wiki reads its version (code read on 2026-11-11, at upstream `3.3.1`)
 
 - `backend/core/config.ts` line 112 sets `WIKI.version` from `backend/package.json`. Line 114 sets `WIKI.devMode` from its `dev` flag, and no code reads `WIKI.devMode`.
 - `backend/api/system.ts`, route `GET /system/info` (permission `access:admin`), returns `currentVersion: WIKI.version` and `latestVersion: WIKI.config.update.version`.
 - `backend/api/system.ts`, route `POST /system/checkForUpdate` (permission `access:admin`), runs the `checkVersion` task and returns `current` and `latest`.
 - `backend/tasks/simple/check-version.ts` reads `https://api.github.com/repos/requarks/wiki/releases/latest`, strips a leading `v`, and stores the result in the `update` setting. It runs nightly (`backend/models/jobs.ts` line 37).
-- `backend/models/settings.ts` line 188 seeds `update.version` with `WIKI.version` on a fresh install.
-- `frontend/src/stores/admin.js`, getter `versionStatus`, calls `semverGte(currentVersion, latestVersion)` from `semver/functions/gte` (semver 7.8.5). `AdminDashboard.vue` (`versionCard`) and `AdminLayout.vue` (line 418, `isVersionLatest`) read that getter.
-- `frontend/src/components/CheckUpdateDialog.vue`, computed `isLatest`, calls the same `semverGte` on the dialog's `current` and `latest`.
+- `backend/models/settings.ts`, method `init`, seeds `update.version` with `WIKI.version` on a fresh install.
+- `frontend/src/stores/admin.js`, getter `versionStatus`, calls `semverGte(currentVersion, latestVersion)` from `semver/functions/gte` (semver 7.8.6 in `frontend/package.json`). It returns `pending` first when either version is empty or `n/a`. `AdminDashboard.vue` (`versionCard`) and the status light in `AdminLayout.vue` (getter `isVersionLatest`) read that getter.
+- `frontend/src/components/CheckUpdateDialog.vue`, computed `isLatest`, calls the same `semverGte` on the dialog's `current` and `latest`. After a check, the dialog also writes both values into `info` of the admin store, so the version card and the status light follow.
 - The backend calls semver only on the Node.js and PostgreSQL versions (`backend/index.ts`, `backend/core/db.ts`), never on `WIKI.version`.
 - Other places print `WIKI.version` as a plain string: the boot banner, the MCP `serverInfo.version`, the webhook and fetch `user-agent`, and the metrics label. A `+` is a legal token character in a `user-agent` value.
 
-A run of semver 7.8.5 from `backend/node_modules` on the laptop gave these results:
+A run of semver 7.8.5 from `backend/node_modules` on the laptop gave these results. The base update raised the pin to 7.8.6, but the installed copy is still 7.8.5. Assumption: the patch release keeps these results.
 
 | Call | Result |
 | ---- | ------ |
@@ -35,7 +35,7 @@ A run of semver 7.8.5 from `backend/node_modules` on the laptop gave these resul
 | `gte('n/a', '3.0.2')` | throws `Invalid Version` |
 | `valid('3.0.2+jp.1')` | `'3.0.2'`, build metadata is dropped |
 
-The same rules hold for `3.1.0+jp.1`. No code calls `valid` or `clean` on the wiki version, so the dropped metadata never reaches a screen.
+A run on 2026-11-11 gave the same results for `3.3.1+jp.1` against `3.3.1` and `3.3.2`. No code calls `valid` or `clean` on the wiki version, so the dropped metadata never reaches a screen.
 
 ## Goals / Non-Goals
 
@@ -54,40 +54,44 @@ The same rules hold for `3.1.0+jp.1`. No code calls `valid` or `clean` on the wi
 
 ### D1. Version string `<upstream>+jp.<N>`
 
-The version in `package.json` is `3.1.0+jp.1`. Build metadata is valid semver and has the same precedence as `3.1.0`. The dashboard, the layout status light, and the update dialog then work with no helper.
+The version in `package.json` is `3.3.1+jp.1`. Build metadata is valid semver and has the same precedence as `3.3.1`. The dashboard, the layout status light, and the update dialog then work with no helper.
 
 Alternatives:
 
-- `3.1.0-jp.1` (a prerelease). Rejected. It ranks below `3.1.0`, so every fork build shows "update available" against its own base.
-- `3.1.0_jp1` (the 2.x scheme). Rejected. It is not semver, so `semverGte` throws in the `versionStatus` getter, as it did in 2.x.
+- `3.3.1-jp.1` (a prerelease). Rejected. It ranks below `3.3.1`, so every fork build shows "update available" against its own base.
+- `3.3.1_jp1` (the 2.x scheme). Rejected. It is not semver, so `semverGte` throws in the `versionStatus` getter, as it did in 2.x.
 
 `N` starts at 1 and counts fork releases on one base. A new upstream base restarts `N` at 1. No number carries a leading zero.
 
 ### D2. Git tag `v<version>`
 
-The release tag is `v3.1.0+jp.1`. The `v` prefix keeps fork tags apart from upstream tags, which carry no prefix and also live in the fork repository. A `+` is legal in a git ref name and in a GitHub release tag.
+The release tag is `v3.3.1+jp.1`. The `v` prefix keeps fork tags apart from upstream tags, which carry no prefix and also live in the fork repository. A `+` is legal in a git ref name and in a GitHub release tag.
 
-The trigger filter is `'v[0-9]+.[0-9]+.[0-9]+\+jp.[0-9]+'`. In a GitHub filter pattern, `+` means "one or more of the previous character", so the literal `+` takes a backslash. The filter skips upstream tags such as `3.1.0` and 2.x tags such as `v2.5.315_jp3`. A push of all tags therefore starts no stray build.
+The trigger filter is `'v[0-9]+.[0-9]+.[0-9]+\+jp.[0-9]+'`. In a GitHub filter pattern, `+` means "one or more of the previous character", so the literal `+` takes a backslash. The filter skips upstream tags such as `3.3.1` and 2.x tags such as `v2.5.315_jp3`. A push of all tags therefore starts no stray build.
 
 The filter cannot reject a leading zero. `dev/ci/fork-version.mjs` does that check in the first step.
 
-Alternative: a bare `3.1.0+jp.1` tag. Rejected, because a filter on a digit start also matches every upstream tag.
+Alternative: a bare `3.3.1+jp.1` tag. Rejected, because a filter on a digit start also matches every upstream tag.
 
 ### D3. Image tag `<upstream>_jp.<N>`
 
-A Docker tag allows `[A-Za-z0-9_.-]` and no `+`. The pipeline replaces the one `+` with `_`, so `3.1.0+jp.1` maps to image tag `3.1.0_jp.1`. The mapping is one-to-one and reversible.
+A Docker tag allows `[A-Za-z0-9_.-]` and no `+`. The pipeline replaces the one `+` with `_`, so `3.3.1+jp.1` maps to image tag `3.3.1_jp.1`. The mapping is one-to-one and reversible.
 
-Alternative: `3.1.0-jp.1`. Rejected. Tools that read image tags as semver see a prerelease that ranks below `3.1.0`. The `_` form also matches the 2.x image habit (`2.5.315_jp3`). The OCI label `org.opencontainers.image.version` carries the full `3.1.0+jp.1`.
+Alternative: `3.3.1-jp.1`. Rejected. Tools that read image tags as semver see a prerelease that ranks below `3.3.1`. The `_` form also matches the 2.x image habit (`2.5.315_jp3`). The OCI label `org.opencontainers.image.version` carries the full `3.3.1+jp.1`.
 
 The tag passes the pin check of the deployment (`grep -nE 'image: .*:(latest|[0-9]+)$'` in `greensight-wiki`), because it ends in `jp.1`.
 
 ### D4. Namespace from the repository name
 
-The image is `ghcr.io/${GITHUB_REPOSITORY,,}`, the repository name in lowercase, as in the 2.x reference. The workflow names no owner. Assumption: the 3.x fork is `arsenixprime/wiki`, so the image is `ghcr.io/arsenixprime/wiki`. The 2.x tags (`2.5.315_jp3`) and the 3.x tags (`3.1.0_jp.1`) share the package without a clash.
+The image is `ghcr.io/${GITHUB_REPOSITORY,,}`, the repository name in lowercase, as in the 2.x reference. The workflow names no owner. Settled on 2026-11-11: the 3.x fork is `GreenSight-Inc/wiki3`, so the image is `ghcr.io/greensight-inc/wiki3`.
+
+GHCR accepts only lowercase image names, and `GITHUB_REPOSITORY` holds `GreenSight-Inc/wiki3`. A workflow expression has no lowercase function. One `run:` step therefore writes `image=ghcr.io/${GITHUB_REPOSITORY,,}` to `$GITHUB_OUTPUT`. The `,,` is the Bash expansion that lowercases a value. Every later step reads the image name from that output.
+
+The 3.x image lives in its own package, apart from the 2.x fork image. The 2.x tags (`2.5.315_jp3`) never meet the 3.x tags (`3.3.1_jp.1`).
 
 ### D5. Release branch as a workflow constant
 
-On a tag push, `GITHUB_REF_NAME` is the tag. The workflow therefore sets `RELEASE_BRANCH` at the top. It checks that the tagged commit is an ancestor of `origin/$RELEASE_BRANCH` and passes that branch as `BUILD_BRANCH`. Assumption: `RELEASE_BRANCH` is `feat/greensight-visual`.
+On a tag push, `GITHUB_REF_NAME` is the tag. The workflow therefore sets `RELEASE_BRANCH` at the top. It checks that the tagged commit is an ancestor of `origin/$RELEASE_BRANCH` and passes that branch as `BUILD_BRANCH`. Assumption: `RELEASE_BRANCH` is `feat/greensight-visual`. The default branch of the fork, `scarlett`, is the other candidate.
 
 Alternative: `git branch -r --contains`. Rejected. It returns several branches or none, and the Build row then names a guess.
 
@@ -142,6 +146,7 @@ jobs:
     steps:
       # checkout (fetch-depth: 0), setup-node 26.x
       # parse:  node dev/ci/fork-version.mjs "$TAG" >> "$GITHUB_OUTPUT"
+      # image:  echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       # check:  base tag exists and is an ancestor, commit is on origin/$RELEASE_BRANCH
       # stamp:  npm pkg set version="$VERSION" in backend/ and frontend/
       # build:  npm ci && npm run build in frontend/ and blocks/
@@ -164,7 +169,7 @@ The change alters no stored shape and adds no migration. The `update` setting ho
 
 - [An upstream merge conflicts on the guard line in `build.yml`] → The guard is one line on the job. The rule file names it, so a merge keeps it.
 - [The upstream version check reads `requarks/wiki`, so the dashboard reports upstream releases, not fork releases] → This is the wanted signal. A new upstream release is the cue to merge and tag `+jp.1` on the new base.
-- [The fork repository lacks the upstream base tag] → The base check fails with the tag name. The fix is a user-run `git push <fork> 3.1.0`.
+- [The fork repository lacks the upstream base tag] → The base check fails with the tag name. The fix is a user-run `git push origin 3.3.1`.
 - [`imagetools inspect` fails for a reason other than a missing tag] → The push then fails on the same cause, so no image is overwritten.
 - [The arm64 build under emulation is slow] → It runs on the runner, not the laptop. The Dockerfile skips the browser launch under emulation.
 - [A tag is moved and pushed again] → The immutability check fails the run. A new release takes the next `N`.
@@ -174,13 +179,13 @@ The change alters no stored shape and adds no migration. The `update` setting ho
 
 1. Merge the change into the release branch.
 2. Push the branch and the upstream base tag to the fork (user-run).
-3. Push the first release tag `v3.1.0+jp.1` (user-run) and read the run summary.
-4. The deployment change in `greensight-wiki` sets image tag `3.1.0_jp.1`.
+3. Push the first release tag `v3.3.1+jp.1` (user-run) and read the run summary.
+4. The deployment change in `greensight-wiki` sets image tag `3.3.1_jp.1`.
 
 Rollback: `git revert` of the commit removes the workflow, the script, the rule file, and the guard. A published image stays in GHCR. Its deletion is a user-run step in the registry. No database state is involved.
 
 ## Open Questions
 
-- Fork repository and GHCR namespace for 3.x. Default: `arsenixprime/wiki` and `ghcr.io/arsenixprime/wiki`. The workflow derives the namespace from the repository, so the answer changes no file.
-- Release branch name. Default: `feat/greensight-visual`. The answer changes the one `RELEASE_BRANCH` line.
+- Release branch name. Default: `feat/greensight-visual`. The other candidate is `scarlett`, the default branch of the fork. The answer changes the one `RELEASE_BRANCH` line.
+- Settled on 2026-11-11, no longer open: the fork repository is `GreenSight-Inc/wiki3`, and the image is `ghcr.io/greensight-inc/wiki3` (see D4).
 - GHCR package visibility and the pull credential of the production host. Default: the deployment change settles it.

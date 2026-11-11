@@ -7,11 +7,11 @@ See proposal.md, section Why, for the motivation and the go or no-go gate.
 The current code, as read on 2026-11-10:
 
 - `notifications.status()` in `backend/models/notifications.ts` computes `emailsFailed24h`. It counts rows of the `notifications` table with `emailState = 'failed'` and `updatedAt` within the last 24 hours. `GET /system/notifications` returns it, and `AdminNotifications.vue` shows it in red when it is above zero.
-- The mail drain in `backend/notifications/mailer.ts` retries a failed send after `RETRY_DELAY` (600 seconds). After `MAX_ATTEMPTS` (3) it marks the rows `failed` and logs `Failed to send a notification email`. The failure update does not touch `updatedAt`, which is the inbox sort key and the time the entry last absorbed an event.
+- The mail drain in `backend/notifications/mailer.ts` logs `Failed to send a notification email` on each failed send. It retries after `RETRY_DELAY` (600 seconds). After `MAX_ATTEMPTS` (3) it marks the rows `failed`. The failure update does not touch `updatedAt`, which is the inbox sort key and the time the entry last absorbed an event.
 - The counted unit is a notification entry, not a mail. One digest mail carries up to 50 entries. The schema description of `emailsFailed24h` says "Emails" and is loose about it.
 - Only notification mail records a failure. The welcome mail, the password reset, and the test mail leave no row.
 - `backend/models/metrics.ts` exposes no gauge for notification email. The plan's zero-code alternative of a Prometheus alert does not work without a code change.
-- The fork (`dev/docs/fork-features.md`, section Mail-failure alert) shows the banner to every administrator. One dismissal clears it for all of them until the next failure.
+- The 2.x fork (`dev/docs/fork-features.md` in the 2.x fork repository, section Mail-failure alert) shows the banner to every administrator. One dismissal clears it for all of them until the next failure.
 - `MainLayout.vue` holds the header, the sidebar, and the page view. It has no admin-only element today. `WBanner` in `frontend/src/components/shared/` carries no color of its own.
 
 ## Goals / Non-Goals

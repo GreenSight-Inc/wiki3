@@ -2,18 +2,19 @@
 
 ## Context
 
-See proposal.md section Why for the motivation and the gate. This section names only the code that shapes the approach. Every name below was checked against the working copy on 2026-11-10.
+See proposal.md section Why for the motivation and the gate. This section names only the code that shapes the approach. Every name below was checked against the working copy on 2026-11-11, on top of the upstream release 3.3.1 (commit `bfb13cc1`).
 
 - **Versions.** `pageHistory` in `backend/db/schema.ts` holds one complete row per change. `models/pageHistory.ts` writes it in `record()`, which snapshots the page row after the change. `latestVersionId(siteId, pageId)` returns the newest row, which is the page as it stands. The id is a random uuid, so it is not monotonic. Six call sites in `models/pages.ts` call `record()`: create, update, move, delete, restore, and the bulk delete. `convertPage` and `adoptStoredPage` reach `updatePage` or `createPage`, so they record through those.
 - **Every save records a version.** `updatePage` calls `record()` even when no field changed. It emits the `page:edit` notification only when `notificationVariants` finds a change.
 - **The history purge** (`pageHistory.purge`) deletes every version older than a timeframe. A page whose every version is older loses its history entirely, so `latestVersionId` then returns null.
-- **The page row is copied into every version.** `record()` copies each column of `pages` into `meta`, except the names in `EXCLUDED_FROM_META`. `changedFields()` skips the names in `NOT_REPORTED_AS_CHANGED`. The lifecycle columns `contentUpdatedAt`, `lastReviewedAt`, and `lifecycleBanner` sit in the first list for this reason (`.claude/rules/page-lifecycle.md`).
+- **The page row is copied into every version.** `record()` copies each column of `pages` into `meta`, except the names in `EXCLUDED_FROM_META`. `changedFields()` skips the names in `NOT_REPORTED_AS_CHANGED`. The lifecycle columns `contentUpdatedAt`, `lastReviewedAt`, and `lifecycleBanner` sit in the first list for this reason (`.claude/rules/page-lifecycle.md`). Since 3.3.1 the edit lock column `isEditLocked` sits there too, so a version restore neither locks nor unlocks a page.
 - **Approval rules and edit suggestions** (`models/approvals.ts`, `api/approvals.ts`, `approvalRules`, `pageEditSubmissions`) decide who publishes and queue suggestions for reviewers. The page payload already carries their state as `approvalState`, and `api/approvals.ts` owns the `reviewerFor` helper. This change touches none of it and takes no name from it.
-- **Page owners** (`models/pageOwners.ts`, `api/pageOwners.ts`) are the template. They use a separate table and a `PUT …/ownership` route with `write:pages`. The route checks the list rungs for naming users or groups and writes an audit action. The page payload carries `ownership` for writers only. The panel holds a pending edit in `editorStore.ownership`, and `pageSave` sends it after the page save. Owners are users or groups, never a mix. `MAX_PAGE_OWNERS` is 50.
+- **Page owners** (`models/pageOwners.ts`, `api/pageOwners.ts`) are the template. They use a separate table and a `PUT …/ownership` route with `write:pages`. The route checks the list rungs for naming users or groups and writes an audit action. Since 3.3.1 it calls `WIKI.models.pages.assertEditable(page)` before it writes. The page payload carries `ownership` for writers only. The panel holds a pending edit in `editorStore.ownership`, and `pageSave` sends it after the page save. Owners are users or groups, never a mix. `MAX_PAGE_OWNERS` is 50.
 - **Mark as reviewed** (`PUT …/reviewed` in `api/pageLifecycle.ts`) sets `pages.lastReviewedAt` and removes the lifecycle banner. It records no version and says nothing about a version.
+- **Edit lock** (new in 3.3.1). `pages.isEditLocked` locks a page against edits. `PUT …/edit-lock` in `api/pages.ts` sets and clears it with `manage:pages` on the page. It writes the audit actions `lockPageEdits` and `unlockPageEdits` and records no version. `pages.assertEditable` answers 423 in `updatePage`, `convertPage`, `movePage`, and `deletePage`. CLAUDE.md section Permissions asks each route that changes what is kept beside a page to call it too. A storage import is the one exception and goes through.
 - **Notifications** (`.claude/rules/notifications.md`, `dev/specs/notifications.md`). A category is a file under `backend/notifications/categories/`, a key in `NOTIFICATION_CATEGORIES`, and its strings. An event kind is a key in `NOTIFICATION_EVENT_KINDS` with an `emit()` call. `ownersOf` in `notifications/recipients.ts` shows how a recipient query expands groups through `userGroups` and keeps active accounts that are not system accounts. The fan-out leaves the actor out and checks the category's `access` permission per group set. It does not apply the rule for pages that are not live.
 - **Live pages** (`helpers/publishing.ts`). `liveCondition` is the SQL form. No JavaScript form exists yet.
-- **Frontend.** `PagePropertiesDialog.vue` has the Ownership and Lifecycle Rules sections, the user and group lookups, and the `w-btn-toggle` and `w-select` controls. `PageHeader.vue` has the pending suggestions button with a `w-badge`. `stores/page.js` holds `ownership` and `pageSaveOwnership`. `stores/editor.js` holds the pending `ownership` and the `hasPendingChanges` getter.
+- **Frontend.** `PagePropertiesDialog.vue` has the Ownership and Lifecycle Rules sections, the user and group lookups, and the `w-btn-toggle` and `w-select` controls. `PageHeader.vue` has the pending suggestions button with a `w-badge`. `stores/page.js` holds `ownership` and `pageSaveOwnership`. `stores/editor.js` holds the pending `ownership` and the `hasPendingChanges` getter. `stores/page.js` exports `isSavedFieldMutation`. The panel counts every mutation of the page store as a pending edit, except a `$patch` object that touches none of `SAVED_PAGE_FIELDS`. `pageSetEditLock` writes the lock that way. The panel has a `mayManagePage` computed for `manage:pages` on the page.
 - **Uncommitted work** from changes 01 to 03 sits in `backend/api/pages.ts` (the print QR code), `backend/api/schemas/page.ts`, `backend/locales/en.json`, `frontend/src/components/PageHeader.vue` (the print meta line and QR code), and `frontend/src/stores/page.js`. This change adds to those files and leaves that work as it is.
 
 ## Goals / Non-Goals
@@ -41,7 +42,7 @@ See proposal.md section Why for the motivation and the gate. This section names 
 - Alternative considered: a mode column inside `pages.config`. Rejected, because `config` is page content. Every version copies it and a version restore puts it back.
 - Alternative considered: a column `signOffVersionId` on `pages` that only content changes move. Rejected for now, because "every new version clears" is the default in proposal.md section Open Questions. The column is the path if the user picks "content changes only".
 
-**Migration.** The name is `page-sign-off`. The command is `cd backend && npm run db-generate -- --name=page-sign-off`. It adds the column with its default, so every existing row reads `off`, and it creates the two tables. It converts no rows. After it, the code reads one shape with no fallback (CLAUDE.md first section). The column is not part of a version: `signOffMode` goes into `EXCLUDED_FROM_META` and `NOT_REPORTED_AS_CHANGED` in `models/pageHistory.ts`. `restorePage` writes explicit columns, so a restored page gets the default `off`.
+**Migration.** The name is `page-sign-off`. The command is `cd backend && npm run db-generate -- --name=page-sign-off`. It adds the column with its default, so every existing row reads `off`, and it creates the two tables. It converts no rows. After it, the code reads one shape with no fallback (CLAUDE.md first section). The column is not part of a version: `signOffMode` goes into `EXCLUDED_FROM_META`, beside `isEditLocked`, and into `NOT_REPORTED_AS_CHANGED` in `models/pageHistory.ts`. `restorePage` writes explicit columns, so a restored page gets the default `off`.
 
 ### 2. The current version and what clears a sign-off
 
@@ -60,6 +61,7 @@ A new helper `isLiveNow(page)` in `helpers/publishing.ts` is the JavaScript twin
 | Act | Permission | Kind | Where checked |
 | --- | --- | --- | --- |
 | Set mode and approvers | `manage:pages` on the page | page rule | handler, `mayOnPage` |
+| Set mode and approvers on a page locked against edits | refused with 423 | page state | handler, `pages.assertEditable` |
 | Name a new user | `list:users` rung (`LIST_USERS_PERMISSIONS`) or `manage:system` | global | handler, against `actor.permissions` |
 | Name a new group | `list:groups` rung (`LIST_GROUPS_PERMISSIONS`) or `manage:system` | global | handler, against `actor.permissions` |
 | Read the status and counts | `read:pages` on the page, plus `unpublishedFor(req)` | page rule | handler, through `getPage` and `mayOnPage` |
@@ -67,9 +69,11 @@ A new helper `isLiveNow(page)` in `helpers/publishing.ts` is the JavaScript twin
 | Record a verdict | signed-in account, current approver, `read:pages` on the page | page rule | handler |
 | Receive either notification | `read:pages` on the page | page rule | fan-out, category `access` |
 
-No route declares `config.permissions`. Each handler carries a `No route-level permissions:` comment, as `api/pageOwners.ts` does.
+No route declares `config.permissions`. Each route carries a comment that opens with "No route-level `permissions`", as `api/pageOwners.ts` and the edit-lock route do.
 
-`manage:pages` is the default, because a writer who sets the approvers of a page they publish defeats the control. `write:pages` is the alternative, and proposal.md section Open Questions names it. The read-only view in the panel goes to `write:pages` holders.
+The PUT handler calls `WIKI.models.pages.assertEditable(page)` after the permission check, as `api/pageOwners.ts` does. A page locked against edits answers 423 and nothing changes. The verdict route does not call it. A verdict records agreement and changes nothing that the lock holds. proposal.md section Open Questions names this default.
+
+`manage:pages` is the default, because a writer who sets the approvers of a page they publish defeats the control. The edit-lock route checks the same permission in the same way. `write:pages` is the alternative, and proposal.md section Open Questions names it. The read-only view in the panel goes to `write:pages` holders.
 
 ### 5. Group approvers
 
@@ -104,7 +108,7 @@ A new file `backend/api/pageSignOff.ts`, registered in `backend/api/index.ts` ne
 - `PUT /sites/:siteId/pages/:pageId/sign-off`, body `{ mode, users, groups }`. Answers `{ ok, signOff: PageSignOffStatus }`. Audit `updatePageSignOff` with `pageId`, `siteId`, `locale`, `path`, and `mode`.
 - `POST /sites/:siteId/pages/:pageId/sign-off/verdict`, body `{ versionId, verdict, comment }`. Answers `{ ok, signOff: PageSignOffStatus }`. Audit `signOffPage` or `requestSignOffChanges` with `pageId`, `siteId`, `locale`, `path`, and `versionId`, never the comment.
 
-The page payload in `GET /sites/:siteId/pages/:pageId` and the path lookup gains `signOff`: null for mode `off`, else `{ mode, versionId, isLive, required, signed, changesRequested, isApproved, viewer }`. It costs two queries, and none for mode `off`. The `Page` schema in `backend/api/schemas/page.ts` gains the field. No route returns module configuration, so no sensitive prop needs a mask. No response carries an email.
+The page payload of `GET /sites/:siteId/pages/:pageIdOrHash`, which serves both the id and the path hash lookup, gains `signOff`: null for mode `off`, else `{ mode, versionId, isLive, required, signed, changesRequested, isApproved, viewer }`. It costs two queries, and none for mode `off`. The `Page` schema in `backend/api/schemas/page.ts` gains the field. No route returns module configuration, so no sensitive prop needs a mask. No response carries an email.
 
 ### 11. Model
 
@@ -112,9 +116,9 @@ A new file `backend/models/pageSignOff.ts` is registered in `backend/models/inde
 
 ### 12. Frontend
 
-- `frontend/src/stores/page.js`: state `signOff` from the page payload and `signOffSettings` for the panel. Actions `pageLoadSignOff()` (`API_CLIENT.get('sites/<siteId>/pages/<id>/sign-off')`), `pageSaveSignOff(settings)` (`API_CLIENT.put(...)`), and `pageRecordSignOff({ versionId, verdict, comment })` (`API_CLIENT.post('…/sign-off/verdict')`). `pageSave` sends a pending sign-off edit after the page save, beside `ownership` and `lifecycleRules`.
+- `frontend/src/stores/page.js`: state `signOff` from the page payload and `signOffSettings` for the panel. Actions `pageLoadSignOff()` (`API_CLIENT.get('sites/<siteId>/pages/<id>/sign-off')`), `pageSaveSignOff(settings)` (`API_CLIENT.put(...)`), and `pageRecordSignOff({ versionId, verdict, comment })` (`API_CLIENT.post('…/sign-off/verdict')`). `pageSave` sends a pending sign-off edit after the page save, beside `ownership` and `lifecycleRules`. Every write of `signOff` and `signOffSettings` is a `$patch` object, as `pageSetEditLock` does. Then `isSavedFieldMutation` never counts a status load as a pending page edit.
 - `frontend/src/stores/editor.js`: state `signOff`, null when nothing is pending, counted in `hasPendingChanges` and reset with the others.
-- `frontend/src/components/PagePropertiesDialog.vue`: a Sign-off section after Ownership, with `w-btn-toggle` for the mode and two `w-select` pickers that reuse `lookupUsers` and `lookupGroups`. Shown when `userStore.pagePermissions` holds `manage:pages`, read-only chips for `write:pages`, hidden in suggest mode. A table-of-contents entry like the others.
+- `frontend/src/components/PagePropertiesDialog.vue`: a Sign-off section after Ownership, with `w-btn-toggle` for the mode and two `w-select` pickers that reuse `lookupUsers` and `lookupGroups`. Shown when `mayManagePage` is true, read-only chips for `write:pages`, hidden in suggest mode. A table-of-contents entry like the others.
 - `frontend/src/components/PageHeader.vue`: a `w-btn` with a `w-chip` beside the pending suggestions button, shown when `pageStore.signOff` is set and `editorStore.isActive` is false. Colors come from the palette: `positive` for Approved, `negative` for changes requested, `grey` for pending and review. Click opens the dialog.
 - `frontend/src/components/PageSignOffDialog.vue`, new: the approver list from `pageLoadSignOff()`, a Sign off button, and a Request changes form with a `w-input` textarea. It uses `w-dialog`, `w-card`, `w-list`, `w-item`, `w-btn`, and `w-input`. A 409 answer shows `common.page.signOff.stale` and reloads the status.
 - No new dark-mode rule. The chip and the dialog use palette colors and shared components that carry their own dark styles. If a rule turns out to be needed, it goes under `.body--dark &` with its `.w-dark-surface &` twin, as `_base.scss` does.
@@ -194,3 +198,4 @@ Each key goes next to its neighbors in `backend/locales/en.json`.
 - Does the history purge spare the newest version of a page with mode on? Default applied: no change to the purge.
 - Does a scheduled page get a sign-off request when its window opens? Default applied: no. Only a save, a move, or an import sends one.
 - Does the history overlay show the sign-offs of each version? Default applied: not in this change. The status route with `versionId` serves a later step.
+- Does a page locked against edits also refuse a verdict? Default applied: no. Only a change to the mode and the approvers answers 423.

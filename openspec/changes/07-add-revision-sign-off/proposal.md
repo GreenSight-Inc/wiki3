@@ -51,6 +51,7 @@ None. `openspec/specs/` holds no capability yet.
   - `write:pages` or `manage:pages` on the page, or being an approver, to see the names and verdicts of the approvers.
   - A signed-in account that is a current approver and holds `read:pages` on the page to record a verdict.
   - The fan-out checks `read:pages` for each recipient of both categories.
+  - A page locked against edits (`pages.isEditLocked`, new in upstream 3.3.1) refuses a change to the mode and the approvers with 423. A verdict still goes through.
 - API: `GET /sites/:siteId/pages/:pageId/sign-off`, `PUT /sites/:siteId/pages/:pageId/sign-off`, and `POST /sites/:siteId/pages/:pageId/sign-off/verdict`. A new field `signOff` on the page payload carries the summary for the header badge.
 - Notifications: two new categories, `signOffRequested` and `signOffChangesRequested`, in the `reviews` section. Two new event kinds, `page:signOffRequest` and `page:signOffChanges`.
 - Locale keys in `backend/locales/en.json`, all listed with their strings in design.md section Locale keys:
@@ -71,3 +72,4 @@ None. `openspec/specs/` holds no capability yet.
 - Does a version that changes only metadata, such as tags, the publish dates, or the path, clear the status? Default applied: yes. Every new version clears it, as every publish did in the fork.
 - Does an approver sign a version they wrote themselves? Default applied: yes, as in the fork. A four-eyes rule refuses it instead.
 - Does the legacy sign-off history need a CSV export before cutover? Default applied: no export. The user decides after the gate query.
+- Does a page locked against edits also refuse a verdict? Default applied: no. A verdict changes nothing that the lock holds. Only the mode and the approvers follow the lock.

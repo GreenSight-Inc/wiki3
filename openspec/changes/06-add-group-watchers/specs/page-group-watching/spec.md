@@ -96,7 +96,7 @@ The system SHALL offer `PUT /sites/:siteId/pages/:pageId/watch-groups` with a bo
 - **THEN** the audit log holds one entry "Changed the groups watching a page" with the page and the number of groups, and no member names
 
 ### Requirement: The set route refuses a caller without the permission
-The route SHALL answer 401 to a request without an account, 404 to a page the caller cannot read or that does not exist, and 403 to a caller without `write:pages` on the page. A caller who adds a new group to the list SHALL also hold `list:groups`, `read:groups`, `write:groups`, `manage:groups`, or `manage:system`, or the route SHALL answer 403. Removing groups SHALL need no global permission.
+The route SHALL answer 401 to a request without an account, 404 to a page the caller cannot read or that does not exist, and 403 to a caller without `write:pages` on the page. The route SHALL answer 423 when the page is locked against edits. A caller who adds a new group to the list SHALL also hold `list:groups`, `read:groups`, `write:groups`, `manage:groups`, or `manage:system`, or the route SHALL answer 403. Removing groups SHALL need no global permission.
 
 #### Scenario: A guest calls the route
 - **WHEN** a request without an account calls the route
@@ -113,6 +113,10 @@ The route SHALL answer 401 to a request without an account, 404 to a page the ca
 #### Scenario: An editor without group lookup removes one
 - **WHEN** the same caller sends the current list less one group
 - **THEN** the system answers 200 and the removed group no longer watches the page
+
+#### Scenario: A page locked against edits
+- **WHEN** a caller with `write:pages` on a page that is locked against edits calls the route
+- **THEN** the system answers 423 "This page is locked and cannot be edited." and changes nothing
 
 #### Scenario: An invalid group
 - **WHEN** a caller sends the id of the guests group or of a group that does not exist

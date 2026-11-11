@@ -6,12 +6,12 @@ The GreenSight custom branch of Wiki.js 3 needs its own production image, and th
 
 ## What Changes
 
-- A new GitHub Actions workflow, "Release (Fork)", runs when an operator pushes a fork version tag such as `v3.1.0+jp.1`.
+- A new GitHub Actions workflow, "Release (Fork)", runs when an operator pushes a fork version tag such as `v3.3.1+jp.1`.
 - The workflow checks the tag and stamps the version into `backend/package.json` and `frontend/package.json`. It builds the frontend assets, the blocks, and the image from `dev/build/Dockerfile`.
 - The workflow passes the build args `BUILD_BRANCH`, `BUILD_COMMIT`, and `BUILD_COMMIT_DATE` that change 01 adds to the Dockerfile. The Build row under Admin, System then names the release build.
 - The workflow publishes the image for `linux/amd64` and `linux/arm64` to the GitHub Container Registry (GHCR) namespace of the fork repository. It publishes one exact tag and no `latest` tag.
-- The version scheme is semver build metadata: `<upstream version>+jp.<N>`, such as `3.1.0+jp.1`. Semver is the Semantic Versioning 2.0.0 standard.
-- A `+` is not legal in a Docker image tag. The image tag replaces the `+` with `_`, so version `3.1.0+jp.1` becomes image tag `3.1.0_jp.1`.
+- The version scheme is semver build metadata: `<upstream version>+jp.<N>`, such as `3.3.1+jp.1`. Semver is the Semantic Versioning 2.0.0 standard.
+- A `+` is not legal in a Docker image tag. The image tag replaces the `+` with `_`, so version `3.3.1+jp.1` becomes image tag `3.3.1_jp.1`.
 - A small script, `dev/ci/fork-version.mjs`, turns a tag into the version and the image tag, and rejects a malformed tag. It runs in the workflow and on the laptop.
 - The upstream workflow `.github/workflows/build.yml` gets a guard on its job. The job runs only when the repository is `requarks/wiki`. In the fork, the run shows the job as skipped.
 - A new rule file `.claude/rules/fork-release.md` records the version scheme, the tag mapping, and the user-run release steps (working rule D).
@@ -37,13 +37,13 @@ None. `openspec/specs/` holds no capability yet.
 - New dependencies: none in any workspace. The workflow uses GitHub Actions from `actions/*` and `docker/*`, each pinned to a full commit hash.
 - Verification tier: the check set alone (working rule C). The change has no UI. The tasks add a local test of the tag script and a local image build.
 - Change 01 (`01-add-build-info`) supplies the Dockerfile build args and the Build row. Its code already exists as uncommitted work in `dev/build/Dockerfile` and `backend/helpers/buildInfo.ts`. This change depends on it.
-- Source plan correction: the plan names `3.0.2+jp.1`. The working copy sits on upstream tag `3.1.0` plus two commits, so the first fork version is `3.1.0+jp.1`.
+- Source plan correction: the plan names `3.0.2+jp.1`. The working copy sits on upstream tag `3.3.1` plus one commit, so the first fork version is `3.3.1+jp.1`.
 
 Assumptions:
 
-- The fork repository for 3.x is `arsenixprime/wiki`, so the image is `ghcr.io/arsenixprime/wiki`. The git remote of the working copy names only `requarks/wiki`.
-- The release branch is `feat/greensight-visual`, the work branch of this working copy.
-- The fork repository holds the upstream release tags, such as `3.1.0`.
+- Settled on 2026-11-11: the fork repository for 3.x is `GreenSight-Inc/wiki3`, the git remote `origin`. The image is `ghcr.io/greensight-inc/wiki3`, because GHCR needs a lowercase name. The remote `upstream` is `requarks/wiki`, with push disabled.
+- The release branch is `feat/greensight-visual`, the work branch of this working copy. The default branch of the fork is `scarlett`.
+- The fork repository holds the upstream release tags, such as `3.3.1`.
 - The production host is a `t3` instance (x86_64) and the laptop is arm64, so the image carries both platforms.
 
 ## Non-goals
@@ -58,6 +58,5 @@ Assumptions:
 
 ## Open Questions
 
-- Which repository holds the 3.x custom branch, and which GHCR namespace receives the image? Default: `arsenixprime/wiki` and `ghcr.io/arsenixprime/wiki`, the 2.x fork namespace.
 - Which branch is the release branch? Default: `feat/greensight-visual`.
 - Is the GHCR package public or private, and how does the production host authenticate a pull? Default: the package takes the visibility GHCR gives it, and the deployment change settles the pull credential.

@@ -37,12 +37,12 @@ This decision answers how an existing site, created before the key, receives `fe
 
 Evidence from the code:
 
-1. The server reads a site row verbatim. `reloadCache` in `backend/models/sites.ts` (lines 118 to 121) selects the rows and keys them by id. It merges nothing over them. `createSite` (line 162) and `init` (line 610) write the default `poweredBy: true` (lines 214 and 649), but only for a site created after this change.
+1. The server reads a site row verbatim. `reloadCache` in `backend/models/sites.ts` selects the rows and keys them by id with `keyBy`. It merges nothing over them. `createSite` and `init` write the default `poweredBy: true` in their `features` blocks, but only for a site created after this change.
 2. The site read routes spread the stored config as it is: `...s.config` and `...site.config` in `backend/api/sites.ts` (lines 82 and 151) and in `backend/api/bootstrap.ts` (line 75). The `Site` schema property `features.poweredBy` has no `default`, so the serializer omits the missing key.
 3. The site store spreads the response over its own defaults. `applySiteInfo` in `frontend/src/stores/site.js` (lines 505 to 528) builds `features` as `{ ...this.features, ...siteInfo.features }`. The state default is `poweredBy: true` (line 138). So a missing key reads as true.
 4. `FooterNav.vue` (line 85) tests `siteStore.features.poweredBy !== false`. Only a stored false hides the attribution.
 5. The General screen loads with `toMerged(defaultConfig(), resp)` (line 905). `defaultConfig()` holds `poweredBy: true` (line 819). So the toggle reads on for a site without the key. `save()` sends `poweredBy` explicitly (line 967).
-6. `updateSite` merges the incoming config into the stored one with `mergeWith` (line 442). The first save of the General screen therefore writes the key, and every other key stays.
+6. `updateSite` in `backend/models/sites.ts` merges the incoming config into the stored one with `mergeWith`. The first save of the General screen therefore writes the key, and every other key stays.
 
 Precedent: no migration under `backend/db/migrations/` touches `config.features`. A search for `features` in that folder finds nothing. The flags `backlinks`, `comments`, `glossary`, `glossaryAutoLink`, and `notifications` each reach existing sites the same way, through a `!== false` read on the server. The site store comment on `notifications` states the rule: "the server reads a missing key as on".
 

@@ -361,3 +361,33 @@ Consequences worth knowing:
   simply never matches: `can('browse:fileman')` and friends silently hid the controls they guarded.
   Adding a genuinely new global permission is allowed but is the maintainer's decision — ask first,
   as above; never introduce one on your own.
+
+## GreenSight fork
+
+This section applies to the GreenSight fork only. Everything above it comes from upstream and stays as upstream wrote it, so that a merge from upstream does not conflict.
+
+**Remotes.** `origin` is `github.com/GreenSight-Inc/wiki3`, the corporate fork. `upstream` is `github.com/requarks/wiki`, fetch only, with its push address disabled. The base branch is `scarlett`. The work branch is `feat/greensight-visual`. The sibling repository `../greensight-wiki` holds the deployment (Docker Compose, Terraform, backups, the migration from Wiki.js 2) and is a separate project.
+
+**Changes go through OpenSpec.** `openspec/config.yaml` holds the project context, the Do not add list, the working rules A to F, the artifact rules, and the local check set. Each change lives under `openspec/changes/<name>/` with a proposal, a delta spec, a design, and tasks. The `/opsx:*` commands and the `openspec-*` skills run the workflow.
+
+**The number prefix of a change is the apply order.** Apply the lowest-numbered change with unticked tasks first:
+
+| Change | State |
+| ------ | ----- |
+| `01-add-build-info` | Code is in the working tree, uncommitted. The tasks review it, finish it and check it. |
+| `02-add-powered-by-toggle` | Same. |
+| `03-add-print-header-and-qr-code` | Same. |
+| `04-add-custom-release-pipeline` | Not started. |
+| `05-add-mail-failure-banner` | Conditional. Task 1.1 is a `user-run:` query on the legacy wiki that decides go or no-go. |
+| `06-add-group-watchers` | Conditional, same gate. |
+| `07-add-revision-sign-off` | Conditional, same gate. |
+
+The uncommitted code of changes 01 to 03 shares files: `backend/api/schemas/site.ts`, `backend/models/sites.ts`, `backend/locales/en.json`, `frontend/src/pages/AdminGeneral.vue` and `frontend/src/stores/site.js` each carry lines of more than one change. Commit each change on its own, with only its own lines (`git add -p`). Delete a row from the table above when its change is archived.
+
+**Agents** are in `.claude/agents/`: `spec-creator` writes a new change, `feature-builder` builds one change through `code-implementer` and `code-reviewer` with a verification gate, and `spec-finalizer` verifies, syncs and archives a finished change. `.claude/workflows/verification-repair.js` repairs check failures that already exist in the tree, with no OpenSpec change.
+
+**The local check set** is listed with its exact commands in `openspec/config.yaml` (section Local checks): `ts-typecheck`, `oxlint-backend`, `oxlint-frontend`, `oxfmt-check` on changed files only, `frontend-build`, `blocks-build`, `schema-migration`, `locale-json`, `secret-scan`, `untracked-config` and `openspec-validate`. A check whose tool is missing is advisory, a check whose target does not exist is skipped, and an unrun check is never reported as passed.
+
+**User-run steps.** The user runs `git push`, `git tag`, and any command against a deployed wiki, a container registry or an AWS account. The agent prepares the exact command. Task lists mark these steps with `user-run:`. Commit only when the user asks.
+
+**Node.js.** The project needs Node.js 26. A laptop with an older Node.js still runs the type check, the linters, the formatter and the builds. Booting the backend, and so a throwaway instance, needs the dev container or a Node.js 26 install.

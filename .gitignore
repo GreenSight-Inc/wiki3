@@ -50,3 +50,6 @@ cloudflared.deb
 /.claude/*
 !/.claude/rules/
 !/.claude/skills/
+!/.claude/agents/
+!/.claude/commands/
+!/.claude/workflows/

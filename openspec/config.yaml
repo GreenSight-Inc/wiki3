@@ -80,7 +80,7 @@ context: |
   - ts-typecheck: cd backend && npm run typecheck, expected exit 0 and no error line after the tsc banner.
   - oxlint-backend: cd backend && npx oxlint, expected exit 0.
   - oxlint-frontend: cd frontend && npx oxlint, expected exit 0.
-  - oxfmt-check: backend/node_modules/.bin/oxfmt --check <changed files>, expected exit 0. The changed files are the output of two commands. The first is git diff --name-only HEAD -- '*.ts' '*.js' '*.mjs' '*.vue'. The second is git ls-files --others --exclude-standard -- '*.ts' '*.js' '*.mjs' '*.vue'. Untouched files are never passed, because older files predate oxfmt. The check runs from the root, because oxfmt refuses a path with two dots.
+  - oxfmt-check: backend/node_modules/.bin/oxfmt --check <changed files>, expected exit 0. The changed files are the output of two commands. The first is git diff --name-only --diff-filter=d HEAD -- '*.ts' '*.js' '*.mjs' '*.vue'. The second is git ls-files --others --exclude-standard -- '*.ts' '*.js' '*.mjs' '*.vue'. Untouched files are never passed, because older files predate oxfmt. The check runs from the root, because oxfmt refuses a path with two dots.
   - frontend-build: cd frontend && npm run build, expected exit 0. It writes to assets/, which Git ignores.
   - blocks-build: cd blocks && npm run build, expected exit 0. Runs when the change touches blocks/, skipped otherwise.
   - schema-migration: applies when git diff --name-only HEAD -- backend/db/schema.ts prints the file. Then git status --porcelain -- backend/db/migrations/ prints at least one new directory. Its name does not end in _scarlett.

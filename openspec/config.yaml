@@ -1,0 +1,171 @@
+schema: spec-driven
+
+# Project context, artifact rules, and operation guidance for the wiki3 working copy.
+# Every item under rules and operations is a double-quoted string. An unquoted colon drops the whole list.
+
+context: |
+  Context for OpenSpec artifacts in wiki3.
+  Cite this context by section name and rule letter. Never paste it into an artifact.
+  CLAUDE.md, backend/CLAUDE.md, frontend/CLAUDE.md, blocks/CLAUDE.md, the rule files in .claude/rules/, and the designs in dev/specs/ are the authority.
+  This text is a summary with pointers. If this text and those files differ, those files win.
+
+  Purpose
+  - wiki3 is the GreenSight fork of the Wiki.js 3 source. The remote origin is github.com/GreenSight-Inc/wiki3. The remote upstream is github.com/requarks/wiki, fetch only.
+  - The work branch is feat/greensight-visual. The base branch is scarlett.
+  - Work here changes the Wiki.js 3 code: the backend, the frontend, and the blocks. It follows the upstream conventions so that a change can go upstream later.
+  - The sibling repository greensight-wiki (../greensight-wiki) holds the deployment of the GreenSight wiki: Docker Compose, Terraform, backups, and the migration from Wiki.js 2. It is a separate project with its own OpenSpec root.
+  - A change here never touches the deployment, a deployed wiki, or an AWS account.
+
+  Layout (CLAUDE.md section Layout)
+  - Three workspaces, each with its own package.json and node_modules. There is no root package.
+  - backend/ is the Fastify REST API server and the job scheduler, TypeScript 7 on Drizzle and PostgreSQL. See backend/CLAUDE.md.
+  - frontend/ is the Vue 3 single page app on plain Vite with Tailwind and the in-repo W* component library. See frontend/CLAUDE.md.
+  - blocks/ holds the Lit web components that pages embed. See blocks/CLAUDE.md.
+  - config.yml is the instance configuration and Git ignores it. assets/ is the frontend build output and Git ignores it.
+  - dev/ holds the production Dockerfile under dev/build/ and the 3.x Helm chart under dev/chart/. The feature designs live under dev/specs/.
+  - dev/helm/ is the 2.x chart. Nothing for 3.x builds on it.
+  - .claude/rules/*.md are per-subsystem rules. Each loads when a file in its paths list is read. A new subsystem gets a rule file of its own.
+  - .claude/skills/throwaway-instance/ is the procedure for a disposable instance with its own database.
+  - backend/locales/en.json holds the source strings. Keys are dotted, such as admin.general.printQrCode. The file is not fully sorted. Place a new key next to its neighbors.
+  - openspec/ holds config.yaml, specs/, and changes/. It exists.
+
+  Technology facts (CLAUDE.md, backend/CLAUDE.md, frontend/CLAUDE.md, blocks/CLAUDE.md)
+  - The project needs Node.js 26 or newer and PostgreSQL 17 or newer. All three workspaces are ESM.
+  - The laptop has Node.js 24.19.0 as of 2026-11-10. The type check, the linters, the formatter, and the builds run on it. Booting the backend needs Node.js 26, so the backend runs in the dev container (.devcontainer/) or under a Node.js 26 install.
+  - The backend has no build step. Node.js strips the types at load time. Relative imports carry the real .ts extension. Only erasable syntax is allowed, so no enum, no namespace, and no constructor parameter properties. Type-only imports say import type.
+  - The WIKI global holds the database, the models, the configuration, the logger, the cache, and the scheduler. Business logic belongs in backend/models/, not in route handlers.
+  - Every route declares a schema with summary, tags, and response schemas. Shared schemas live in backend/api/schemas/ and are registered in backend/api/index.ts before the routes.
+  - A stored shape that a committed version can hold changes only through a migration under backend/db/migrations/. Edit backend/db/schema.ts, then run npm run db-generate -- --name=<kebab-name> in backend/. The code reads one shape after the migration, with no fallback for the old one. See the first section of CLAUDE.md.
+  - A shape that only uncommitted work created changes freely, with no migration shim and no legacy fallback.
+  - Some values no installation can have and no default can replace, such as a generated secret. A startup check in backend/core/startupChecks.ts fills them in. A setting with a fixed default goes into backend/base.yml.
+  - Linting is oxlint and formatting is oxfmt, both from each workspace's devDependencies. ESLint and Prettier are not used. The format is no semicolons, single quotes, no trailing commas, 2-space indent.
+  - A Vue template attribute never holds two statements. Write a named handler instead.
+  - Utilities come from es-toolkit subpath exports, never es-toolkit/compat. Dates use the native Temporal API.
+  - Permissions come in two kinds. Global permissions are checked by the per-route config.permissions hook. Page rule permissions are bound to paths and are checked in the handler with checkAccess or mayOnPage. See CLAUDE.md section Permissions.
+  - A new global permission is the maintainer's decision. Propose it and wait for a yes before any code names it. Never invent a permission name.
+  - A module prop marked sensitive reads back as SENSITIVE_MASK at the API boundary. A new surface that returns module configuration masks it the same way.
+  - A route that a personal access token can call declares config.scope. An admin route or a credential route leaves it off.
+  - On the frontend, HTTP goes through the API_CLIENT global, events through EVENT_BUS, and state through Pinia option stores. UI controls come from frontend/src/components/shared/.
+  - Dark mode on the frontend is the body--dark class. A new dark-mode rule needs its .w-dark-surface twin. A block reads dark mode through blocks/shared/theme.js, never :host-context().
+  - The default admin login on a fresh instance is admin@example.com with password 12345678. It is a public development default, not a secret.
+
+  Do not add
+  - No ESLint, Prettier, or build step for the backend.
+  - No enum, namespace, or constructor parameter property in backend code.
+  - No migration shim, legacy-value fallback, or deprecated alias for a shape that was never committed.
+  - No fallback for an old stored format after its migration ran.
+  - No hand edit of an existing migration. No db-generate run without --name.
+  - No new global permission without a yes from the maintainer. No permission name that is not on the lists in CLAUDE.md section Permissions.
+  - No es-toolkit/compat import. No :host-context() selector in a block.
+  - No puppeteer or puppeteer-core in a workspace package.json. A screenshot uses a scratch directory, as the throwaway-instance skill says.
+  - No gh CLI call. GitHub issues and pull requests are read over the public REST API.
+  - No reformat of an untouched file as a drive-by change.
+  - No change to dev/helm/, the 2.x chart.
+  - No secret in a tracked file: no password, API key, personal access token, OAuth client secret, or private key.
+  - No tracked copy of config.yml, config.test.yml, data-test/, or build.json.
+  - No step against a running dev instance or its database. A throwaway instance uses its own database, as the throwaway-instance skill says.
+  - A reviewer rejects a proposal that adds one of these items.
+
+  Working rules
+  - Rule A. Artifacts under openspec/ are plain English. See Style. Code comments, locale strings, and rule files follow the voice and the wording rules in CLAUDE.md section Wording.
+  - Rule B. The user runs every user-run step. The agent prepares the exact command and reads the result.
+  - User-run steps: git push and git tag. Also any command against a deployed wiki, a container registry, or an AWS account.
+  - A step on the laptop against the working copy, a throwaway instance, or a scratch database is not user-run.
+  - Rule C. Match the check to the size of the change. The build, oxlint, and the type check are the right check for nearly everything. A throwaway instance with a headless browser is for two cases. One is a new piece of UI that meets a stylesheet written elsewhere. The other is a flow with real state, such as a login, an upload, or a save. See CLAUDE.md section How far to go verifying a change.
+  - Rule D. A durable fact that a later change needs goes into the rule file of its subsystem under .claude/rules/ or into the design under dev/specs/. There is no separate decision log in this working copy.
+  - Rule E. Changes go through OpenSpec in openspec/ with the agents in .claude/agents/. Record every assumption in the artifact it affects.
+  - Rule F. Never commit tmp/, config.test.yml, data-test/, or a file with a secret.
+
+  Local checks (from the repository root, on every change)
+  - ts-typecheck: cd backend && npm run typecheck, expected exit 0 and no error line after the tsc banner.
+  - oxlint-backend: cd backend && npx oxlint, expected exit 0.
+  - oxlint-frontend: cd frontend && npx oxlint, expected exit 0.
+  - oxfmt-check: backend/node_modules/.bin/oxfmt --check <changed files>, expected exit 0. The changed files are the output of two commands. The first is git diff --name-only HEAD -- '*.ts' '*.js' '*.mjs' '*.vue'. The second is git ls-files --others --exclude-standard -- '*.ts' '*.js' '*.mjs' '*.vue'. Untouched files are never passed, because older files predate oxfmt. The check runs from the root, because oxfmt refuses a path with two dots.
+  - frontend-build: cd frontend && npm run build, expected exit 0. It writes to assets/, which Git ignores.
+  - blocks-build: cd blocks && npm run build, expected exit 0. Runs when the change touches blocks/, skipped otherwise.
+  - schema-migration: applies when git diff --name-only HEAD -- backend/db/schema.ts prints the file. Then git status --porcelain -- backend/db/migrations/ prints at least one new directory. Its name does not end in _scarlett.
+  - locale-json: node -e 'JSON.parse(require("fs").readFileSync("backend/locales/en.json","utf8"))', expected exit 0 and no output.
+  - secret-scan: git grep -nE 'AKIA[0-9A-Z]{16}|BEGIN [A-Z ]*PRIVATE KEY' -- ':!package-lock.json', expected no output and exit 1.
+  - untracked-config: git ls-files config.yml config.test.yml data-test build.json, expected no output.
+  - openspec-validate: openspec validate --all, expected exit 0.
+  - A check whose tool is missing on the machine is advisory. A check whose target does not exist is skipped. Never report an unrun check as passed.
+  - Baseline on 2026-11-10: every check passed except oxfmt-check, which named frontend/src/pages/AdminSystem.vue from uncommitted work.
+
+  Style (working rule A)
+  - Plain English in artifacts: short sentences of 25 words or fewer, active voice, simple tenses, American spelling.
+  - No contractions, no semicolons, and no em-dashes in artifacts.
+  - Use SHALL in requirements and the plain present tense elsewhere. Do not use should, would, may, might, or could.
+  - Define each technical term at first use.
+  - In code comments and locale strings, write "regardless of what", not "whatever", for the no-matter-what sense.
+
+rules:
+  proposal:
+    - "Include a `## Non-goals` section that names what the change leaves out."
+    - "Name each workspace the change touches: backend, frontend, or blocks. Name the rule file under .claude/rules/ and the design under dev/specs/ that cover the subsystem, or state that none exists."
+    - "State whether the change alters a stored shape that a committed version can hold. If it does, name the migration the change adds. If the shape was never committed, say so and add no migration."
+    - "Name each permission the change checks, from the lists in CLAUDE.md section Permissions. A new global permission is a question for the maintainer, never a proposed item."
+    - "Name each locale key the change adds to backend/locales/en.json."
+    - "For each new dependency, state the workspace, the exact version, the source, and why the existing libraries do not cover it. Prefer es-toolkit and the native Temporal API."
+    - "Never propose an item from the Do not add list in this context."
+    - "Name the verification tier from working rule C: the check set alone, or the check set plus a throwaway instance. Give the reason for a throwaway instance."
+    - "Never paste the context, a rules list, or a guidance list from openspec/config.yaml into the artifact. Cite them by section name and rule letter."
+    - "Record each assumption in the artifact it affects."
+    - "List each question the run cannot settle. In an `## Open Questions` section, write `- None.` only when nothing is open."
+    - "Write plain English: sentences of 25 words or fewer, active voice, simple tenses, American spelling, no contractions, no semicolons, and no em-dashes."
+  specs:
+    - "Use SHALL or SHALL NOT in every requirement. Give every requirement at least one `#### Scenario:` with WHEN and THEN lines."
+    - "Describe behavior as the reader, the editor, the administrator, or the API caller sees it. Do not describe file names, store names, or function names."
+    - "For a change to an API route, cover the request, the permission the caller needs, and the response shape. Cover the error a caller without the permission receives."
+    - "For a change to the admin area or a page control, cover what the control shows and when it is hidden. Cover what a caller without the permission sees."
+    - "For a change to a stored shape, cover an installation on the earlier commit after the upgrade: the migrated rows read as the new shape."
+    - "For a change to a block, cover the block in light mode, in dark mode, and when the component never loads."
+    - "State that no secret appears in an API response, a log line, or a tracked file that the change produces."
+    - "Never paste the context, a rules list, or a guidance list from openspec/config.yaml into the artifact. Cite them by section name and rule letter."
+    - "Record each assumption in the artifact it affects."
+    - "Write plain English: sentences of 25 words or fewer, active voice, simple tenses, American spelling, no contractions, no semicolons, and no em-dashes."
+  design:
+    - "Name each file the change creates or edits, grouped by workspace. For a backend route, name the schema in backend/api/schemas/ it reuses or adds."
+    - "For a stored shape change, name the migration with its kebab-case name and the db-generate command that creates it. State that the code reads one shape after it, with no fallback."
+    - "For each permission, state whether it is global or a page rule permission, and where the check lives: config.permissions on the route, or the handler."
+    - "For a route that returns module configuration, state how sensitive props are masked. For a route a personal access token can call, state its config.scope."
+    - "For a frontend change, name the store, the API_CLIENT call, and the shared component it uses. For a new dark-mode rule, name its .w-dark-surface twin."
+    - "For a block change, state how it reads dark mode and whether it is inline."
+    - "Name every locale key and its English string."
+    - "Give the rollback path. For a code change, it is git revert of the commit. For a migration, state what a revert leaves in the database and whether a reverse migration is needed."
+    - "Check every setting, API route, and permission against the authority files named in this context. Never invent one."
+    - "List each open question with the default applied. In `## Open Questions`, write `- None.` only when nothing is open."
+    - "Never paste the context, a rules list, or a guidance list from openspec/config.yaml into the artifact. Cite them by section name and rule letter."
+    - "Record each assumption in the artifact it affects."
+    - "Write plain English: sentences of 25 words or fewer, active voice, simple tenses, American spelling, no contractions, no semicolons, and no em-dashes."
+  tasks:
+    - "Name the exact command on every verification step and the output it prints. Write `cd backend && npm run typecheck`, not a description such as run the type check."
+    - "Name the local check set command by command, in the order of the Local checks section of this context. The ids are ts-typecheck, oxlint-backend, oxlint-frontend, oxfmt-check, frontend-build, blocks-build, schema-migration, locale-json, secret-scan, untracked-config, and openspec-validate."
+    - "Mark a check whose target does not exist as skipped. Mark a check whose tool is missing as advisory. Never mark either as passed."
+    - "For a stored shape change, add the step `cd backend && npm run db-generate -- --name=<kebab-name>` before the check set. Add a step that reads the generated SQL."
+    - "For a change that earns a throwaway instance under working rule C, add the boot, the check, and the teardown steps from the throwaway-instance skill. Never add a step against a running dev instance."
+    - "Place every local check before the first user-run step."
+    - "Start each task the user runs with the marker `user-run:`, in the form `- [ ] 2.3 user-run: <exact command and expected output>`."
+    - "These steps always carry the marker: `git push`, `git tag`, any command against a deployed wiki, a container registry, or an AWS account."
+    - "Never add a task that reformats an untouched file."
+    - "Never paste the context, a rules list, or a guidance list from openspec/config.yaml into the artifact. Cite them by section name and rule letter."
+    - "Record each assumption in the artifact it affects."
+    - "Write plain English: sentences of 25 words or fewer, active voice, simple tenses, American spelling, no contractions, no semicolons, and no em-dashes."
+
+operations:
+  apply:
+    guidance:
+      - "Read the rule file under .claude/rules/ and the workspace CLAUDE.md for every file you edit before the first edit."
+      - "Run the local check set from the repository root before any user-run step. Run oxfmt-check on the changed files only."
+      - "Never run a user-run step inside the agent: `git push`, `git tag`, or a command against a deployed wiki, a registry, or an AWS account. Prepare the exact command for the user."
+      - "Never touch a running dev instance or its database. A throwaway instance uses its own database and config.test.yml, and the task tears both down before it ends."
+      - "Never write a password, an API key, a token, an OAuth client secret, or a private key into a tracked file or an artifact."
+      - "Run `npm run db-generate -- --name=<kebab-name>` for a stored shape change and commit nothing by hand under backend/db/migrations/. Never edit an existing migration."
+      - "Never add a global permission. If a route needs one that does not exist, stop and ask the user."
+      - "If the tool of a check is missing, record the check as advisory. If its target is missing, record it as skipped. Never report an unrun check as passed."
+      - "Tick a task only after its check passes with real output."
+  archive:
+    guidance:
+      - "Before the archive, list the verification commands that ran with their result. Name the skipped ones and the advisory ones."
+      - "Before the archive, move each durable fact the change settled into the rule file of its subsystem under .claude/rules/ or the design under dev/specs/. If the subsystem has no rule file, say so in the archive summary."
+      - "If the change settled no durable fact, say so in the archive summary."
+      - "Never commit config.yml, config.test.yml, data-test/, build.json, anything under tmp/, or a file with a secret."

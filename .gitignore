@@ -23,6 +23,7 @@ npm-debug.log*
 # Config Files
 /config.yml
 /localazy.keys.json
+/build.json
 
 # Data directories
 /repo

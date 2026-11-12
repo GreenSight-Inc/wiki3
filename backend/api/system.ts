@@ -189,6 +189,19 @@ async function routes(app: FastifyInstance) {
               currentVersion: {
                 type: 'string'
               },
+              buildBranch: {
+                type: ['string', 'null'],
+                description:
+                  'The git branch this build was made from, or null when the build is not identified.'
+              },
+              buildCommit: {
+                type: ['string', 'null'],
+                description: 'The full git commit hash this build was made from, or null.'
+              },
+              buildCommitDate: {
+                type: ['string', 'null'],
+                description: 'When that commit was made, as RFC 3339, or null.'
+              },
               dbHost: {
                 type: 'string'
               },
@@ -289,6 +302,9 @@ async function routes(app: FastifyInstance) {
         configFile: path.join(process.cwd(), 'config.yml'),
         cpuCores: os.cpus().length,
         currentVersion: WIKI.version,
+        buildBranch: WIKI.build.branch,
+        buildCommit: WIKI.build.commit,
+        buildCommitDate: WIKI.build.commitDate,
         dbHost: WIKI.config.db.host,
         dbVersion: WIKI.dbManager.VERSION,
         groupsTotal: await WIKI.db.$count(groupsTable),

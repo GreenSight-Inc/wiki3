@@ -1448,6 +1448,8 @@
   "admin.storage.title": "Storage",
   "admin.system.browser": "Browser",
   "admin.system.browserHint": "The browser name and version.",
+  "admin.system.build": "Build",
+  "admin.system.buildHint": "The git branch and commit this build was made from.",
   "admin.system.checkForUpdates": "Check",
   "admin.system.checkUpdate": "Check for Updates",
   "admin.system.checkingForUpdates": "Checking for Updates...",

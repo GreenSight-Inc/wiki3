@@ -2,6 +2,7 @@ import { toMerged } from 'es-toolkit/object'
 import { isPlainObject } from 'es-toolkit/predicate'
 import chalk from 'chalk'
 import cfgHelper from '../helpers/config.ts'
+import { readBuildInfo } from '../helpers/buildInfo.ts'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { load } from 'js-yaml'
@@ -111,6 +112,7 @@ export default {
     WIKI.version = packageInfo.version
     WIKI.releaseDate = packageInfo.releaseDate
     WIKI.devMode = packageInfo.dev === true
+    WIKI.build = await readBuildInfo(WIKI.ROOTPATH)
   },
 
   /**

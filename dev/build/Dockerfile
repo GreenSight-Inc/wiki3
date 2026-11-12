@@ -106,6 +106,20 @@ RUN if [ -z "$TARGETARCH" ] || [ "$TARGETARCH" = "$BUILDARCH" ]; then \
         console.log('Emulated build, not launched: ' + file + ' is ' + process.arch);"; \
     fi
 
+# Which build this image is. The image has no .git folder, so the release pipeline passes the branch,
+# the commit and the commit date as build args, and the backend reads them from build.json at boot
+# (`backend/helpers/buildInfo.ts`) for the Build row under Admin -> System. A plain `docker build`
+# with no args writes nothing, and the row stays hidden.
+#
+# Last, because a changed build arg invalidates the cache of every RUN after it. Written with
+# JSON.stringify rather than printf, since a branch name may hold a quote or a backslash.
+ARG BUILD_BRANCH=""
+ARG BUILD_COMMIT=""
+ARG BUILD_COMMIT_DATE=""
+RUN if [ -n "$BUILD_COMMIT" ] || [ -n "$BUILD_BRANCH" ]; then \
+      node -e "require('node:fs').writeFileSync('/wiki/build.json', JSON.stringify({ branch: process.env.BUILD_BRANCH, commit: process.env.BUILD_COMMIT, commitDate: process.env.BUILD_COMMIT_DATE }) + '\n')" ; \
+    fi
+
 WORKDIR /wiki
 
 VOLUME ["/wiki/data/content"]

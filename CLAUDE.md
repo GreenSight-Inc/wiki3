@@ -374,8 +374,7 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 | Change | State |
 | ------ | ----- |
-| `01-add-build-info` | Code is in the working tree, uncommitted. The tasks review it, finish it and check it. |
-| `02-add-powered-by-toggle` | Same. |
+| `02-add-powered-by-toggle` | Code is in the working tree, uncommitted. The tasks review it, finish it and check it. |
 | `03-add-print-header-and-qr-code` | Same. |
 | `04-add-custom-release-pipeline` | Not started. |
 | `05-add-mail-failure-banner` | Conditional. Task 1.1 is a `user-run:` query on the legacy wiki that decides go or no-go. |

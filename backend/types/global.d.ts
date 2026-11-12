@@ -22,6 +22,8 @@ declare global {
     version: string
     releaseDate: string
     devMode: boolean
+    /** The git branch and commit this build was made from. See `helpers/buildInfo.ts`. */
+    build: import('../helpers/buildInfo.ts').BuildInfo
 
     app: FastifyInstance
     server: ReturnType<typeof gracefulServer>

@@ -134,6 +134,14 @@ Conventions established during the conversion, worth following in new code:
   `WIKI.db` (Drizzle), `WIKI.models.*`, `WIKI.config`, `WIKI.logger`, `WIKI.cache`, `WIKI.scheduler`,
   `WIKI.events.{inbound,outbound}` (Emittery), `WIKI.sites` / `WIKI.sitesMappings` (cached site
   configs), `WIKI.ROOTPATH`, `WIKI.SERVERPATH`, `WIKI.INSTANCE_ID`.
+- **`WIKI.build` says which build is running** — `branch`, `commit`, `commitDate` (each nullable)
+  and `source`, resolved once at boot by `readBuildInfo` in `helpers/buildInfo.ts` and exposed on
+  `GET /system/info` as `buildBranch`, `buildCommit`, `buildCommitDate`. First hit on a branch or a
+  commit wins, in this order: the environment (`BUILD_BRANCH`, `BUILD_COMMIT`, `BUILD_COMMIT_DATE`),
+  then `build.json` at the app root, then a live `git` read of the checkout (a detached HEAD gives no
+  branch). A commit date alone is never a hit. The production image has no `.git`, so
+  `dev/build/Dockerfile` writes `build.json` from the build args of the same three names; the release
+  pipeline has to pass them. `build.json` is git-ignored and never committed.
 - **Routes** are Fastify plugins: `async function routes(app) { ... }` with a default export.
 - **Permissions** are declared per-route in `config.permissions`, and enforced by a single
   `preParsing` hook in `index.ts`. The array is OR-ed; a nested array is AND-ed

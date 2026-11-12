@@ -5,7 +5,9 @@
         <img class="admin-icon animated fadeInLeft" src="/_assets/icons/fluent-processor.svg" />
       </div>
       <div class="min-w-0 flex-1 pl-4">
-        <div class="text-h5 admin-page-title animated fadeInLeft">{{ t('admin.system.title') }}</div>
+        <div class="text-h5 admin-page-title animated fadeInLeft">
+          {{ t('admin.system.title') }}
+        </div>
         <div class="text-subtitle1 text-grey animated fadeInLeft wait-p2s">
           {{ t('admin.system.subtitle') }}
         </div>
@@ -61,6 +63,21 @@
               }}</w-item-label>
             </w-item-section>
           </w-item>
+          <!-- Which build of that version, when the build is identified (see backend/helpers/buildInfo.ts) -->
+          <template v-if="buildLabel">
+            <w-separator inset />
+            <w-item>
+              <blueprint-icon icon="git" :hue-rotate="-45" />
+              <w-item-section>
+                <w-item-label>{{ t('admin.system.build') }}</w-item-label>
+                <w-item-label caption>{{ t('admin.system.buildHint') }}</w-item-label>
+              </w-item-section>
+              <w-item-section>
+                <w-item-label class="dark-value" caption>{{ buildLabel }}</w-item-label>
+                <w-item-label v-if="buildDate" caption>{{ buildDate }}</w-item-label>
+              </w-item-section>
+            </w-item>
+          </template>
           <w-separator inset />
           <w-item>
             <blueprint-icon icon="cloud-checked" :hue-rotate="-45" />
@@ -322,6 +339,29 @@ const copySysInfoBtn = ref(null)
 const dbVersion = computed(() => {
   return state.info?.dbVersion?.replace(/(?:\r\n|\r|\n)/g, ', ')
 })
+/** "branch @ shortcommit", or whichever half is known; empty when the build is not identified. */
+const buildLabel = computed(() => {
+  const branch = state.info?.buildBranch
+  const commit = state.info?.buildCommit?.substring(0, 8)
+  if (branch && commit) {
+    return `${branch} @ ${commit}`
+  }
+  return branch || commit || ''
+})
+const buildDate = computed(() => {
+  const value = state.info?.buildCommitDate
+  if (!value) {
+    return ''
+  }
+  try {
+    return Temporal.Instant.from(value).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    })
+  } catch {
+    return value
+  }
+})
 const platformLogo = computed(() => {
   switch (state.info.platform) {
     case 'docker':
@@ -382,7 +422,7 @@ onMounted(() => {
   load()
   const clip = new ClipboardJS(copySysInfoBtn.value.$el, {
     text: () => {
-      return `Wiki.js ${state.info.currentVersion}
+      return `Wiki.js ${state.info.currentVersion}${buildLabel.value ? ` (build ${buildLabel.value})` : ''}
 Postgres ${dbVersion.value}
 Node.js ${state.info.nodeVersion}
 OS: ${state.info.operatingSystem}

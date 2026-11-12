@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     name: Build
+    if: github.repository == 'requarks/wiki'
     runs-on: ubuntu-latest
     permissions:
       contents: write

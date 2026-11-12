@@ -374,7 +374,6 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 | Change | State |
 | ------ | ----- |
-| `04-add-custom-release-pipeline` | Not started. |
 | `05-add-mail-failure-banner` | Conditional. Task 1.1 is a `user-run:` query on the legacy wiki that decides go or no-go. |
 | `06-add-group-watchers` | Conditional, same gate. |
 | `07-add-revision-sign-off` | Conditional, same gate. |

@@ -1,0 +1,175 @@
+# Release (Fork): builds and publishes the image of the GreenSight fork when an operator pushes a
+# fork release tag such as v3.3.1+jp.1. Upstream tags (3.3.1) and 2.x tags (v2.5.315_jp3) do not
+# match the filter. See .claude/rules/fork-release.md for the version scheme and the release steps.
+
+name: Release (Fork)
+
+on:
+  push:
+    tags:
+      # In a filter pattern `+` repeats the previous character, so the literal `+` takes a backslash.
+      - 'v[0-9]+.[0-9]+.[0-9]+\+jp.[0-9]+'
+
+env:
+  # The branch a release is cut from. On a tag push GITHUB_REF_NAME is the tag, so the branch is
+  # named here and checked against the tagged commit.
+  RELEASE_BRANCH: feat/greensight-visual
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.x
+
+      # ---------------------------------------------------
+      # CHECK THE TAG
+      # ---------------------------------------------------
+
+      - name: Parse tag
+        id: parse
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! out=$(node dev/ci/fork-version.mjs "$TAG" 2>&1); then
+            echo "::error::$out"
+            exit 1
+          fi
+          echo "$out" >> "$GITHUB_OUTPUT"
+
+      - name: Image name
+        id: image
+        run: |
+          # GHCR takes lowercase names only, and GITHUB_REPOSITORY keeps the owner's capitals.
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Check base release and branch
+        id: git
+        env:
+          BASE: ${{ steps.parse.outputs.base }}
+        run: |
+          if ! git rev-parse -q --verify "refs/tags/$BASE" > /dev/null; then
+            echo "::error::Base release tag $BASE is missing from this repository. Push it first: git push origin $BASE"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "refs/tags/$BASE" "$GITHUB_SHA"; then
+            echo "::error::Base release tag $BASE is not an ancestor of the tagged commit $GITHUB_SHA."
+            exit 1
+          fi
+          if ! git rev-parse -q --verify "refs/remotes/origin/$RELEASE_BRANCH" > /dev/null; then
+            echo "::error::Release branch $RELEASE_BRANCH is missing from this repository."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/$RELEASE_BRANCH"; then
+            echo "::error::The tagged commit $GITHUB_SHA is not on the release branch $RELEASE_BRANCH."
+            exit 1
+          fi
+          echo "commit_date=$(git show -s --format=%cI "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------
+      # CHECK THE REGISTRY
+      # ---------------------------------------------------
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse an existing image tag
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          IMAGE_TAG: ${{ steps.parse.outputs.image_tag }}
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "::error::Image tag $IMAGE:$IMAGE_TAG already exists. A published tag is never overwritten, so release the next jp number."
+            exit 1
+          fi
+
+      # ---------------------------------------------------
+      # BUILD
+      # ---------------------------------------------------
+
+      - name: Set Version
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          npm pkg set version="$VERSION" --prefix backend
+          npm pkg set version="$VERSION" --prefix frontend
+
+      - name: Build Assets
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Blocks
+        working-directory: blocks
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: dev/build/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.image.outputs.image }}:${{ steps.parse.outputs.image_tag }}
+          build-args: |
+            BUILD_BRANCH=${{ env.RELEASE_BRANCH }}
+            BUILD_COMMIT=${{ github.sha }}
+            BUILD_COMMIT_DATE=${{ steps.git.outputs.commit_date }}
+          labels: |
+            org.opencontainers.image.title=Wiki.js
+            org.opencontainers.image.version=${{ steps.parse.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+          IMAGE: ${{ steps.image.outputs.image }}
+          IMAGE_TAG: ${{ steps.parse.outputs.image_tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          COMMIT_DATE: ${{ steps.git.outputs.commit_date }}
+        run: |
+          {
+            echo "## Release $VERSION"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Version | \`$VERSION\` |"
+            echo "| Image | \`$IMAGE:$IMAGE_TAG\` |"
+            echo "| Digest | \`$DIGEST\` |"
+            echo "| Branch | \`$RELEASE_BRANCH\` |"
+            echo "| Commit | \`$GITHUB_SHA\` ($COMMIT_DATE) |"
+          } >> "$GITHUB_STEP_SUMMARY"

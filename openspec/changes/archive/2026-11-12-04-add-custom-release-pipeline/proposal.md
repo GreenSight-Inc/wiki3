@@ -24,7 +24,7 @@ The GreenSight custom branch of Wiki.js 3 needs its own production image, and th
 
 ### Modified Capabilities
 
-None. `openspec/specs/` holds no capability yet.
+None. The capabilities in `openspec/specs/` stay unchanged.
 
 ## Impact
 
@@ -36,7 +36,7 @@ None. `openspec/specs/` holds no capability yet.
 - Locale keys: none.
 - New dependencies: none in any workspace. The workflow uses GitHub Actions from `actions/*` and `docker/*`, each pinned to a full commit hash.
 - Verification tier: the check set alone (working rule C). The change has no UI. The tasks add a local test of the tag script and a local image build.
-- Change 01 (`01-add-build-info`) supplies the Dockerfile build args and the Build row. Its code already exists as uncommitted work in `dev/build/Dockerfile` and `backend/helpers/buildInfo.ts`. This change depends on it.
+- Change 01 (`01-add-build-info`) supplies the Dockerfile build args and the Build row. Change 01 is archived, and its code is committed as `44169960` in `dev/build/Dockerfile` and `backend/helpers/buildInfo.ts`. This change depends on it.
 - Source plan correction: the plan names `3.0.2+jp.1`. The working copy sits on upstream tag `3.3.1` plus one commit, so the first fork version is `3.3.1+jp.1`.
 
 Assumptions:

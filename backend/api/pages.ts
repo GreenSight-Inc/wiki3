@@ -1,3 +1,4 @@
+import QRCode from 'qrcode'
 import { validate as uuidValidate } from 'uuid'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { PageActor, PageInput } from '../models/pages.ts'
@@ -12,8 +13,14 @@ import {
 import { audit } from '../helpers/audit.ts'
 import { requestUserId } from '../helpers/requester.ts'
 import { maySeeUnpublished, maySeeUnpublishedAnywhere } from '../helpers/publishing.ts'
-import { generatePathHash, normalizePagePath, pagePathToWrite } from '../helpers/common.ts'
+import {
+  generatePathHash,
+  normalizePagePath,
+  originOf,
+  pagePathToWrite
+} from '../helpers/common.ts'
 import { limitAuthAttempts, limitRenders } from '../helpers/rateLimit.ts'
+import { urlOf } from '../helpers/appShell.ts'
 
 /** Comma-separated query lists, which is how the browser sends a multi-valued filter here. */
 function splitList(value?: string): string[] {
@@ -271,6 +278,33 @@ async function loadReadablePage(req: FastifyRequest, siteId: string, pageId: str
     return null
   }
   return page
+}
+
+/**
+ * The QR code a printed page carries in its header, as an SVG document, or null where the site has
+ * `features.printQrCode` off (the default).
+ *
+ * It encodes the page's absolute URL, built by the same `urlOf` as the canonical link in the app
+ * shell: against the origin the request arrived on (`originOf`), since a site bound to the catch-all
+ * `*` has no hostname of its own, and with the path `urlFor` gives every link the wiki makes to its
+ * own pages.
+ *
+ * Made here rather than in the browser because the server already carries `qrcode` for two-factor
+ * setup. `width` is what writes the `width` and `height` attributes onto the root element: an SVG
+ * sized by a stylesheet alone collapses to nothing on paper. A quiet zone of one module rather than
+ * the usual four: the code sits on the white of the sheet, and every module given to the margin is
+ * taken from the size of the ones a phone has to read.
+ */
+async function printQrCodeFor(
+  req: FastifyRequest,
+  siteId: string,
+  page: { locale: string; path: string }
+): Promise<string | null> {
+  if (WIKI.sites[siteId]?.config?.features?.printQrCode !== true) {
+    return null
+  }
+  const url = urlOf(originOf(req), siteId, page.locale, page.path)
+  return QRCode.toString(url, { type: 'svg', margin: 1, width: 74, errorCorrectionLevel: 'M' })
 }
 
 /**
@@ -1126,6 +1160,7 @@ async function routes(app: FastifyInstance) {
       const { ratings, ...pageFields } = page
       return {
         ...pageFields,
+        printQrCode: await printQrCodeFor(req, req.params.siteId, page),
         commentsCount,
         // -> Off the totals cached on the row just loaded, so no aggregate per view
         rating: ratingMode ? WIKI.models.pageRatings.summaryFromCache(ratings, ratingMode) : null,

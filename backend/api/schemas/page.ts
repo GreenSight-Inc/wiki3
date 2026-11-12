@@ -288,6 +288,11 @@ export async function registerSchemas(app: FastifyInstance): Promise<void> {
       },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
+      printQrCode: {
+        type: ['string', 'null'],
+        description:
+          'An SVG document holding a QR code of the page’s own address, for the page header to draw on paper. Present when a page is fetched on its own, and null unless the site’s `features.printQrCode` is on.'
+      },
       blog: {
         type: ['object', 'null'],
         description:

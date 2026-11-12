@@ -374,13 +374,12 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 | Change | State |
 | ------ | ----- |
-| `03-add-print-header-and-qr-code` | Code is in the working tree, uncommitted. The tasks review it, finish it and check it. |
 | `04-add-custom-release-pipeline` | Not started. |
 | `05-add-mail-failure-banner` | Conditional. Task 1.1 is a `user-run:` query on the legacy wiki that decides go or no-go. |
 | `06-add-group-watchers` | Conditional, same gate. |
 | `07-add-revision-sign-off` | Conditional, same gate. |
 
-The uncommitted code of changes 01 to 03 shares files: `backend/api/schemas/site.ts`, `backend/models/sites.ts`, `backend/locales/en.json`, `frontend/src/pages/AdminGeneral.vue` and `frontend/src/stores/site.js` each carry lines of more than one change. Commit each change on its own, with only its own lines (`git add -p`). Delete a row from the table above when its change is archived.
+Delete a row from the table above when its change is archived.
 
 **Agents** are in `.claude/agents/`: `spec-creator` writes a new change, `feature-builder` builds one change through `code-implementer` and `code-reviewer` with a verification gate, and `spec-finalizer` verifies, syncs and archives a finished change. `.claude/workflows/verification-repair.js` repairs check failures that already exist in the tree, with no OpenSpec change.
 

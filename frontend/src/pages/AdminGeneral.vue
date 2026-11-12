@@ -261,6 +261,19 @@
           </w-item>
           <w-separator class="my-2" inset />
           <w-item tag="label">
+            <blueprint-icon icon="qr" />
+            <w-item-section>
+              <w-item-label>{{ t(`admin.general.printQrCode`) }}</w-item-label>
+              <w-item-label caption>{{ t(`admin.general.printQrCodeHint`) }}</w-item-label>
+            </w-item-section>
+            <w-item-section avatar>
+              <w-toggle
+                v-model="state.config.features.printQrCode"
+                :aria-label="t(`admin.general.printQrCode`)" />
+            </w-item-section>
+          </w-item>
+          <w-separator class="my-2" inset />
+          <w-item tag="label">
             <blueprint-icon icon="heart-outline" />
             <w-item-section>
               <w-item-label>{{ t(`admin.general.showPoweredBy`) }}</w-item-label>
@@ -804,6 +817,7 @@ function defaultConfig() {
       listFolderChildren: false,
       notifications: true,
       poweredBy: true,
+      printQrCode: false,
       reasonForChange: 'required'
     },
     discoverable: false,
@@ -951,6 +965,7 @@ async function save() {
           liveNotes: state.config.features?.liveNotes ?? true,
           notifications: state.config.features?.notifications ?? true,
           poweredBy: state.config.features?.poweredBy ?? true,
+          printQrCode: state.config.features?.printQrCode ?? false,
           ratingsMode: state.config.features?.ratingsMode ?? 'off',
           reasonForChange: state.config.features?.reasonForChange ?? 'required',
           search: state.config.features?.search ?? false

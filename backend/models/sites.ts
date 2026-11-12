@@ -220,6 +220,8 @@ class Sites {
           // -> On: the attribution in the footer is what the site has always shown, and hiding it is
           //    a choice an administrator makes rather than one a new site makes for them
           poweredBy: true,
+          // -> Off: a QR code on every printed page is ink nobody asked for until somebody does
+          printQrCode: false,
           reasonForChange: 'optional',
           search: true
         },
@@ -657,6 +659,7 @@ class Sites {
           liveNotes: true,
           notifications: true,
           poweredBy: true,
+          printQrCode: false,
           reasonForChange: 'optional',
           search: true
         },

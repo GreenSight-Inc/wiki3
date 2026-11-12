@@ -136,6 +136,7 @@ export const useSiteStore = defineStore('site', {
       notifications: true,
       // -> On, so that a site config saved before this key existed keeps the attribution it always had
       poweredBy: true,
+      printQrCode: false,
       ratingsMode: 'off',
       reasonForChange: 'required',
       search: false

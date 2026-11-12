@@ -38,7 +38,7 @@ On screen, Wiki.js 3 shows the last editor in the page sidebar. The print styles
 
 - Workspaces: backend and frontend. The blocks workspace is not touched.
 - Rule files: `.claude/rules/page-paths.md` loads for `backend/api/pages.ts` and `backend/helpers/common.ts`. No rule file covers print or site features. No design under `dev/specs/` covers this subsystem.
-- Backend files: `backend/api/pages.ts`, `backend/api/schemas/page.ts`, `backend/api/schemas/site.ts`, `backend/models/sites.ts`, `backend/locales/en.json`.
+- Backend files: `backend/api/pages.ts`, `backend/api/schemas/page.ts`, `backend/api/schemas/site.ts`, `backend/models/sites.ts`, `backend/helpers/appShell.ts`, `backend/locales/en.json`.
 - Frontend files: `frontend/src/components/PageHeader.vue`, `frontend/src/pages/AdminGeneral.vue`, `frontend/src/stores/page.js`, `frontend/src/stores/site.js`.
 - API: `GET /_api/sites/:siteId/pages/:pageIdOrHash` gains the field `printQrCode`. The `Site` schema gains `features.printQrCode`. `PUT /_api/sites/:siteId` accepts it through the existing `features` object.
 - Stored shape: the change adds the key `features.printQrCode` to the site `config` JSONB column. JSONB is the PostgreSQL binary JSON type. No committed version holds the key, and a missing key reads as off, which is the default. The change adds no migration. The design gives the evidence.

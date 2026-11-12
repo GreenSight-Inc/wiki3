@@ -147,6 +147,11 @@ export async function registerSchemas(app: FastifyInstance): Promise<void> {
             description:
               'Whether the footer of every page says it is powered by Wiki.js. On by default. The admin area keeps its own wording regardless of what this says.'
           },
+          printQrCode: {
+            type: 'boolean',
+            description:
+              'Whether a printed page carries a QR code of its own address in its header. Off by default. The code is made on the server and comes with the page as `printQrCode`; it is never shown on screen.'
+          },
           reasonForChange: {
             type: 'string',
             enum: ['off', 'optional', 'required']

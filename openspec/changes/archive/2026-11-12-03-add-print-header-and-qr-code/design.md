@@ -59,7 +59,7 @@ The QR code encodes `originOf(req)` followed by `encodeURI(WIKI.models.pages.url
 
 - The site hostname is not used. A site bound to the catch-all hostname `*` has no hostname of its own.
 - `urlFor` applies the locale prefix as the site settings decide.
-- The working tree duplicates the body of `urlOf` from `backend/helpers/appShell.ts`. Task 2.2 exports `urlOf` and calls it, so one rule builds both addresses.
+- `printQrCodeFor` calls `urlOf`, which `backend/helpers/appShell.ts` exports, so one rule builds both addresses.
 
 Alternative considered: the configured site hostname with a fixed `https` scheme. It fails for the catch-all site and for a wiki reached on two hosts.
 
@@ -131,7 +131,7 @@ admin.general.printQrCodeHint   Can printed pages show a QR code of their addres
 common.page.printLastEditedBy   Last edited by {name} on {date}
 ```
 
-The working tree places `common.page.printLastEditedBy` before `common.page.printFormat`. Task 2.4 moves it after its neighbor `common.page.printFormat`. The block above shows the hint after task 2.4. The working tree words it as a question that starts with `Should`, unlike its neighbors.
+`common.page.printLastEditedBy` follows its neighbor `common.page.printFormat`. The hint is worded as a question that starts with `Can`, like its neighbors.
 
 ## Risks / Trade-offs
 

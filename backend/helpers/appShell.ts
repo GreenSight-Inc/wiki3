@@ -399,7 +399,7 @@ function metaTag(kind: 'name' | 'property', key: string, value: string | null | 
  * prefix and all. A page path is held to `[a-zA-Z0-9-_/]` when it is saved, but a locale's short code
  * is an administrator's to alias, so the result is percent-encoded before it is escaped.
  */
-function urlOf(origin: string, siteId: string, locale: string, path: string): string {
+export function urlOf(origin: string, siteId: string, locale: string, path: string): string {
   return `${origin}${encodeURI(WIKI.models.pages.urlFor(siteId, locale, path))}`
 }
 

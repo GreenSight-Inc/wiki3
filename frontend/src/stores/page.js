@@ -267,6 +267,11 @@ export const usePageStore = defineStore('page', {
     },
     updatedAt: '',
     /**
+     * The QR code of this page's address, as an SVG document the server made, for the page header to
+     * draw on paper. Null unless the site's `features.printQrCode` is on.
+     */
+    printQrCode: null,
+    /**
      * Whether this reader may suggest edits to this page, i.e. an enabled approval rule covers it and
      * names a group they are in. Answered by the server, since neither the rules nor the reader's
      * groups are known here — and left false until it does, so the button never flashes into view on
@@ -619,6 +624,7 @@ export const usePageStore = defineStore('page', {
           scriptCss: '',
           createdAt: '',
           updatedAt: '',
+          printQrCode: null,
           publishState: '',
           isLocked: false,
           isEditLocked: false,

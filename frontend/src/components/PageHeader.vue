@@ -101,7 +101,26 @@
           @keydown.enter.prevent="$event.target.blur()" />
         <span v-else :dir="contentDir">{{ pageStore.description }}</span>
       </div>
+      <!--
+        Paper only. On screen the last editor is in the sidebar, which the print stylesheet drops with
+        the rest of the chrome -- so a printout would otherwise never say who wrote what it holds, or
+        when. Governed by the same two switches as the sidebar block in `Index.vue`.
+      -->
+      <div v-if="printLastEditedBy" class="page-header-print-meta">{{ printLastEditedBy }}</div>
     </div>
+    <!--
+      PRINT QR CODE -- paper only, the page's own address for a reader holding the sheet to get back to
+      it. Inline SVG made by the server (`printQrCode` on the page), never an `<img>` with a data URI,
+      which browsers leave off the printed sheet; and a flex item of this row rather than a float,
+      which the print layout drops. The SVG carries its own `width` and `height` attributes, without
+      which it collapses to nothing on paper.
+    -->
+    <!-- eslint-disable-next-line vue/no-v-html -- server-generated QR code SVG -->
+    <div
+      v-if="printQrCode"
+      class="page-header-print-qr flex-none"
+      aria-hidden="true"
+      v-html="printQrCode" />
     <!-- PAGE ACTIONS -->
     <!--
       `has-editor-actions` is what keeps this row on a phone, where it is otherwise hidden: what it
@@ -504,6 +523,36 @@ const pendingCount = computed(() => pageStore.pendingSubmissions.length)
  * whoever maintains it.
  */
 const isRedirect = computed(() => pageStore.editor === 'redirect')
+
+/*
+  The line that stands in for the sidebar's "last edited by" block on paper: both switches, the site's
+  and the page's, as in `Index.vue`, and nothing while the page is being edited -- what is printed from
+  the editor is not the version whose author this would name.
+*/
+const printLastEditedBy = computed(() => {
+  if (
+    editorStore.isActive ||
+    !siteStore.features.lastEditedBy ||
+    !pageStore.showLastEditedBy ||
+    !pageStore.authorId ||
+    !pageStore.authorName ||
+    !pageStore.updatedAt
+  ) {
+    return ''
+  }
+  return t('common.page.printLastEditedBy', {
+    name: pageStore.authorName,
+    date: userStore.formatDate(pageStore.updatedAt)
+  })
+})
+
+/**
+ * The page's QR code, for paper. The server only makes one while the site has `features.printQrCode`
+ * on; the site's switch is asked here as well so that turning it off takes effect without a reload.
+ */
+const printQrCode = computed(() =>
+  !editorStore.isActive && siteStore.features.printQrCode ? pageStore.printQrCode : null
+)
 
 // DATA
 
@@ -984,6 +1033,40 @@ function notImplemented() {
 </script>
 
 <style scoped lang="scss">
+/*
+  What the header adds for paper: the last editor's line under the description, and the QR code at the
+  end of the row. Neither is drawn on screen, where the sidebar already names the editor and a code
+  pointing at the page being read points nowhere new.
+
+  The colour is set rather than inherited for the reason `_print.scss` sets the title's: the header
+  paints its foreground per theme, and from the dark theme that is white on white paper.
+*/
+.page-header-print-meta,
+.page-header-print-qr {
+  display: none;
+}
+
+@media print {
+  .page-header-print-meta {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 9pt;
+    color: #333;
+  }
+
+  .page-header-print-qr {
+    display: flex;
+    align-items: center;
+    padding-inline-start: 1rem;
+    padding-bottom: 0.5rem;
+    break-inside: avoid;
+  }
+
+  .page-header-print-qr :deep(svg) {
+    display: block;
+  }
+}
+
 /*
   The phone layout of this row.
 

@@ -134,6 +134,8 @@ export const useSiteStore = defineStore('site', {
       // -> On, for the reason `backlinks` is: the server reads a missing key as on, and the badge
       //    must not disagree with it
       notifications: true,
+      // -> On, so that a site config saved before this key existed keeps the attribution it always had
+      poweredBy: true,
       ratingsMode: 'off',
       reasonForChange: 'required',
       search: false

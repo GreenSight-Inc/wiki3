@@ -648,6 +648,8 @@
   "admin.general.searchAllowIndexingHint": "When off, pages are served with a noindex header and robots.txt disallows crawling, keeping the site out of search results.",
   "admin.general.senderEmailHint": "Email address of the sender.",
   "admin.general.senderNameHint": "Name of the sender.",
+  "admin.general.showPoweredBy": "Show Powered By",
+  "admin.general.showPoweredByHint": "Can the \"Powered by Wiki.js\" attribution be displayed in the page footer?",
   "admin.general.siteBranding": "Site Branding",
   "admin.general.siteDescription": "Site Description",
   "admin.general.siteDescriptionHint": "Default description when none is provided for a page.",

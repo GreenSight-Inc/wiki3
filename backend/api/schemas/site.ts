@@ -142,6 +142,11 @@ export async function registerSchemas(app: FastifyInstance): Promise<void> {
             description:
               'Whether this site sends notifications at all — in-app or by email. Off, nothing that happens on the site is recorded for anybody, emails already waiting are dropped, and the inbox is hidden; entries already there are kept for when it is turned back on. What each person receives is theirs to choose, under Profile → Notifications.'
           },
+          poweredBy: {
+            type: 'boolean',
+            description:
+              'Whether the footer of every page says it is powered by Wiki.js. On by default. The admin area keeps its own wording regardless of what this says.'
+          },
           reasonForChange: {
             type: 'string',
             enum: ['off', 'optional', 'required']

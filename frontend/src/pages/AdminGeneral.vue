@@ -261,6 +261,19 @@
           </w-item>
           <w-separator class="my-2" inset />
           <w-item tag="label">
+            <blueprint-icon icon="heart-outline" />
+            <w-item-section>
+              <w-item-label>{{ t(`admin.general.showPoweredBy`) }}</w-item-label>
+              <w-item-label caption>{{ t(`admin.general.showPoweredByHint`) }}</w-item-label>
+            </w-item-section>
+            <w-item-section avatar>
+              <w-toggle
+                v-model="state.config.features.poweredBy"
+                :aria-label="t(`admin.general.showPoweredBy`)" />
+            </w-item-section>
+          </w-item>
+          <w-separator class="my-2" inset />
+          <w-item tag="label">
             <blueprint-icon icon="inbox" />
             <w-item-section>
               <w-item-label>{{ t(`admin.general.allowNotifications`) }}</w-item-label>
@@ -790,6 +803,7 @@ function defaultConfig() {
       lastEditedBy: true,
       listFolderChildren: false,
       notifications: true,
+      poweredBy: true,
       reasonForChange: 'required'
     },
     discoverable: false,
@@ -936,6 +950,7 @@ async function save() {
           listFolderChildren: state.config.features?.listFolderChildren ?? false,
           liveNotes: state.config.features?.liveNotes ?? true,
           notifications: state.config.features?.notifications ?? true,
+          poweredBy: state.config.features?.poweredBy ?? true,
           ratingsMode: state.config.features?.ratingsMode ?? 'off',
           reasonForChange: state.config.features?.reasonForChange ?? 'required',
           search: state.config.features?.search ?? false

@@ -1,9 +1,10 @@
 <template>
   <div class="site-footer">
-    <div class="site-footer-line">
+    <div v-if="hasSiteFooter || showPoweredBy" class="site-footer-line">
+      <!-- -> The gap before the attribution is only wanted when the attribution follows -->
       <i18n-t
         v-if="hasSiteFooter"
-        class="mr-1"
+        :class="{ 'mr-1': showPoweredBy }"
         :keypath="isCopyright ? `common.footerCopyright` : `common.footerLicense`"
         tag="span"
         scope="global">
@@ -18,6 +19,7 @@
         </template>
       </i18n-t>
       <i18n-t
+        v-if="showPoweredBy"
         :keypath="props.generic ? `common.footerGeneric` : `common.footerPoweredBy`"
         tag="span"
         scope="global">
@@ -75,6 +77,12 @@ const currentYear = new Date().getFullYear()
 const hasSiteFooter = computed(() => {
   return !props.generic && siteStore.company && siteStore.contentLicense
 })
+/*
+  The attribution, unless the site turned it off under General -> Features. The admin area's wording
+  (`generic`) is not the site's to remove: it is the wiki software describing itself to whoever runs
+  it, not something a reader of the site ever sees.
+*/
+const showPoweredBy = computed(() => props.generic || siteStore.features.poweredBy !== false)
 const footerExtraHtml = computed(() => renderFooter(siteStore.footerExtra))
 const isCopyright = computed(() => {
   return siteStore.contentLicense === 'alr'

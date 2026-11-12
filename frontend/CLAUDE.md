@@ -50,6 +50,10 @@ to the backend on **3000**, so the backend must be running too.
   config, so no import needed) — e.g. `await API_CLIENT.get('sites').json()`. It handles the `/_api`
   prefix; authentication is the session cookie, sent with every request.
 - Cross-component messaging uses the `EVENT_BUS` global (mitt).
+- **A new site feature flag (`features.*`) needs no migration when its absence can mean the default.**
+  The site store holds the default (`poweredBy: true`) and `applySiteInfo` spreads the response over
+  it, the General screen's `defaultConfig()` does the same, and readers test `!== false`; the key
+  reaches a stored site on its first save. Add a migration only if some reader has no default.
 - State lives in Pinia option stores. For utilities and dates use `es-toolkit` and `Temporal` — see
   [Utilities and dates](../CLAUDE.md#utilities-and-dates).
 

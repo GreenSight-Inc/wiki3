@@ -217,6 +217,9 @@ class Sites {
           // -> On: a reader who watches a page or is mentioned expects to be told. What each person
           //    receives, and how, is theirs to choose under Profile → Notifications
           notifications: true,
+          // -> On: the attribution in the footer is what the site has always shown, and hiding it is
+          //    a choice an administrator makes rather than one a new site makes for them
+          poweredBy: true,
           reasonForChange: 'optional',
           search: true
         },
@@ -653,6 +656,7 @@ class Sites {
           listFolderChildren: true,
           liveNotes: true,
           notifications: true,
+          poweredBy: true,
           reasonForChange: 'optional',
           search: true
         },

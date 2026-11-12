@@ -6,7 +6,7 @@ Workflow scripts live in this directory. They run through the Claude Code `Workf
 
 Every script follows these rules. The user runs each step in this list. The agent prepares the exact command and reads the result.
 
-- A script never boots the backend and never touches a running dev instance or its database.
+- A script never touches a running dev instance or its database. The repair script never boots the backend at all. The delivery script boots a throwaway instance on its own database, and only when `tasks.md` of the change asks for one.
 - A script never runs a command against a deployed wiki, a container registry, or an AWS account.
 - A script never runs `git push`, `git tag`, or `git commit`.
 - A script never uses the `gh` CLI.
@@ -18,7 +18,7 @@ A step on the laptop against the working copy is not a user-run step.
 
 ## Local check set
 
-The repair script runs the local check set that `openspec/config.yaml` and the agents name. Each check runs from the repository root. The `cd` in a command applies to that command only.
+Both scripts run the local check set that `openspec/config.yaml` and the agents name. Each check runs from the repository root. The `cd` in a command applies to that command only.
 
 | id | command | what a pass proves |
 |---|---|---|
@@ -50,9 +50,50 @@ git ls-files --others --exclude-standard -- '*.ts' '*.js' '*.mjs' '*.vue'
 - `oxfmt-check` never receives an untouched file. Older files predate oxfmt, and a drive-by reformat is not allowed.
 - A check is never reported as passed when it did not run.
 
+## feature-delivery-verification-gated.js
+
+This script builds one OpenSpec change. It is the deterministic twin of the `feature-builder` agent. Both follow the same graph with the same caps. Keep them in sync. The order is:
+
+1. Resolve the change and capture the baseline to `tmp/verification-baseline.txt`, in parallel.
+2. Implement the unticked tasks with the `code-implementer` agent.
+3. Review with the `code-reviewer` agent until no critical issue remains.
+4. Run the verification gate on the changed files.
+5. Fix the gating failures in bounded rounds. Each round repeats steps 3 and 4.
+
+Without a change name, the script picks the active change with the lowest number prefix that still has an unticked task. When the first task of that change is an unticked `user-run:` gate, the script stops with `status: needs-input` and returns the gate text. A conditional change does not start before its gate records a go.
+
+The working tree can be dirty. The uncommitted code of several changes can share one file. The implementer builds on the lines of its own change and leaves the lines of another change alone. The baseline records `git status --short`, so the report can tell old edits from new ones.
+
+The gate compares each check with the baseline. The changed-file scope is the diff from the merge base with `origin/scarlett`, plus staged, unstaged, and untracked files. A check gates in these cases:
+
+- It passed at baseline and fails now.
+- It failed at baseline and now fails differently because of the change.
+- It was skipped at baseline, has a target now, and fails.
+- It is `oxfmt-check` and it names a file the change touched, even when the format defect is older than the change.
+
+Any other failure that is identical to its baseline never gates the change. The gate runs `blocks-build` only when the scope holds a file under `blocks/`. For a scope of documentation only (`*.md`, `openspec/**`, `.claude/**`), the gate runs `secret-scan`, `untracked-config`, and `openspec-validate` only. The gate adds a throwaway instance test only when `tasks.md` asks for one, and it follows the `throwaway-instance` skill. On a machine without Node.js 26 and without the dev container, that test is advisory.
+
+Invoke it with `Workflow({name: "feature-delivery-verification-gated", args: {...}})`, or ask the agent to "run the feature-delivery-verification-gated workflow". A bare string `args` is the change name.
+
+| arg | default | meaning |
+|---|---|---|
+| `change` (or bare-string `args`) | `null` (auto-detect) | OpenSpec change name. An unknown name returns `status: needs-input` with the candidates. |
+| `maxReviewRounds` | `5` | Cap on the critical-fix loop. When the cap is reached, or a review returns no verdict, the run returns `status: blocked`. |
+| `maxFixRounds` | `3` | Cap on the gate-fix loop. When the cap is reached, the run returns `status: done-with-residual-failures`. |
+
+| status | meaning |
+|---|---|
+| `done` | No critical issue remains and the gate passed against a captured baseline. |
+| `done-unverified` | No critical issue remains, but the baseline was not captured or the gate returned no verdict. Nothing is proven. |
+| `done-with-residual-failures` | Some gating failures remain after the fix rounds. |
+| `blocked` | A review still has a critical issue after `maxReviewRounds`, or a review returned no verdict. |
+| `needs-input` | No unambiguous change, an unticked `user-run:` gate as the first task, or a change with every task ticked. |
+
+The script never ticks or runs a `user-run:` task, never commits, and never archives. Commit the change on its own with `git add -p`. The `spec-finalizer` agent archives it.
+
 ## verification-repair.js
 
-This script repairs check failures that already exist in the tree. There is no OpenSpec change. The order is:
+This script repairs check failures that already exist in the tree. There is no OpenSpec change. It is the sibling of the delivery script. That script gates failures a change adds. This one targets failures the tree already has, and its `blocks-build` check always runs. The order is:
 
 1. Audit the full check set and record it to `tmp/verification-audit.txt`.
 2. Fix the failing checks with the `code-implementer` agent.
@@ -83,8 +124,6 @@ Invoke it with `Workflow({name: "verification-repair", args: {...}})`, or ask th
 
 Some failures need a user decision, for example a new permission, a new dependency, or a migration for a shape whose history is unclear. Such a failure stays failing. The implementer explains why in its report, and the failure lands in `residualFailures`.
 
-## Scripts not carried over
+## Source of the scripts
 
-The source of these files is the sibling repository `greensight-wiki`. Its check set covers Docker Compose, Terraform, and shell scripts. This repository holds TypeScript, Vue, and Lit code, so the check set here is different and the script was rewritten around it.
-
-A delivery script for one OpenSpec change can be added later. Until then, the `feature-builder` agent runs the same flow for one change: baseline, implement, review, and the verification gate.
+The repair script comes from the sibling repository `greensight-wiki`. The delivery script comes from the repository `greensight_agent`. Their check sets cover Docker Compose, Terraform, and shell scripts. This repository holds TypeScript, Vue, and Lit code, so the check set here is different and both scripts were rewritten around it.

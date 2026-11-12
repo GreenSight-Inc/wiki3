@@ -381,7 +381,7 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 Delete a row from the table above when its change is archived.
 
-**Agents** are in `.claude/agents/`: `spec-creator` writes a new change, `feature-builder` builds one change through `code-implementer` and `code-reviewer` with a verification gate, and `spec-finalizer` verifies, syncs and archives a finished change. `.claude/workflows/verification-repair.js` repairs check failures that already exist in the tree, with no OpenSpec change.
+**Agents** are in `.claude/agents/`: `spec-creator` writes a new change, `feature-builder` builds one change through `code-implementer` and `code-reviewer` with a verification gate, and `spec-finalizer` verifies, syncs and archives a finished change. `.claude/workflows/feature-delivery-verification-gated.js` is the deterministic twin of `feature-builder`, so keep the two in sync. `.claude/workflows/verification-repair.js` repairs check failures that already exist in the tree, with no OpenSpec change.
 
 **The local check set** is listed with its exact commands in `openspec/config.yaml` (section Local checks): `ts-typecheck`, `oxlint-backend`, `oxlint-frontend`, `oxfmt-check` on changed files only, `frontend-build`, `blocks-build`, `schema-migration`, `locale-json`, `secret-scan`, `untracked-config` and `openspec-validate`. A check whose tool is missing is advisory, a check whose target does not exist is skipped, and an unrun check is never reported as passed.
 

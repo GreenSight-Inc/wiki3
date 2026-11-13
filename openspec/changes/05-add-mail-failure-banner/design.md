@@ -112,5 +112,5 @@ No migration. `backend/base.yml` supplies the default. Rollback is `git revert` 
 
 ## Open Questions
 
-- Go or no-go. Default: no-go until task 1.1 records a go.
-- Instance-wide dismissal. Default: instance-wide, as D2 says.
+- Go or no-go. Answered on 2026-11-13: go. The query of task 1.1 returned zero rows.
+- Instance-wide dismissal. Answered on 2026-11-13: instance-wide, as D2 says.

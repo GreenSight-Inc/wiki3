@@ -189,13 +189,13 @@ Each key goes next to its neighbors in `backend/locales/en.json`.
 
 ## Open Questions
 
-- Does the legacy wiki use sign-off today? Default applied: none. Task 1.1 is the gate, and no other task runs before it.
-- Which page permission sets the mode and the approvers? Default applied: `manage:pages`.
-- Does a group need every member to sign? Default applied: every current member.
-- Does an approver without read access count as pending? Default applied: yes, marked without access.
-- Does every new version clear the status, or only a content change? Default applied: every new version.
-- Does an approver sign a version they wrote? Default applied: yes.
-- Does the history purge spare the newest version of a page with mode on? Default applied: no change to the purge.
-- Does a scheduled page get a sign-off request when its window opens? Default applied: no. Only a save, a move, or an import sends one.
-- Does the history overlay show the sign-offs of each version? Default applied: not in this change. The status route with `versionId` serves a later step.
-- Does a page locked against edits also refuse a verdict? Default applied: no. Only a change to the mode and the approvers answers 423.
+- Does the legacy wiki use sign-off today? Answered on 2026-11-13: yes, lightly, and the user decided go. The counts are in proposal.md, section Why. Task 1.1 is the gate, and no other task runs before it.
+- Which page permission sets the mode and the approvers? Default applied: `manage:pages`. Answered on 2026-11-13: the user accepts the default.
+- Does a group need every member to sign? Default applied: every current member. Answered on 2026-11-13: the user accepts the default.
+- Does an approver without read access count as pending? Default applied: yes, marked without access. Answered on 2026-11-13: the user accepts the default.
+- Does every new version clear the status, or only a content change? Default applied: every new version. Answered on 2026-11-13: the user accepts the default.
+- Does an approver sign a version they wrote? Default applied: yes. Answered on 2026-11-13: the user accepts the default.
+- Does the history purge spare the newest version of a page with mode on? Default applied: no change to the purge. Answered on 2026-11-13: the user accepts the default.
+- Does a scheduled page get a sign-off request when its window opens? Default applied: no. Only a save, a move, or an import sends one. Answered on 2026-11-13: the user accepts the default.
+- Does the history overlay show the sign-offs of each version? Default applied: not in this change. The status route with `versionId` serves a later step. Answered on 2026-11-13: the user accepts the default.
+- Does a page locked against edits also refuse a verdict? Default applied: no. Only a change to the mode and the approvers answers 423. Answered on 2026-11-13: the user accepts the default.

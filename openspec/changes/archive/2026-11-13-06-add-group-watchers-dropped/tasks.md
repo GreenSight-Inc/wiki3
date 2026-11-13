@@ -2,7 +2,7 @@
 
 ## 1. Decision gate
 
-- [ ] 1.1 user-run: on the legacy wiki host, against the wiki database, run the read-only query `SELECT count(*) AS watch_rows, count(DISTINCT "pageId") AS watched_pages, count("groupId") AS group_watch_rows FROM "pageWatchers";` and report the three numbers. If `group_watch_rows` is 0, stop here and drop this change. If it is above 0, also run `SELECT p.path, g.name FROM "pageWatchers" w JOIN pages p ON p.id = w."pageId" JOIN groups g ON g.id = w."groupId";` and keep the output under `tmp/` in greensight-wiki as the list to set again after the cutover.
+- [x] 1.1 Result on 2026-11-13: `watch_rows` 9, `watched_pages` 7, `group_watch_rows` 0. The change is dropped here, and no later task runs. The task as written: user-run: on the legacy wiki host, against the wiki database, run the read-only query `SELECT count(*) AS watch_rows, count(DISTINCT "pageId") AS watched_pages, count("groupId") AS group_watch_rows FROM "pageWatchers";` and report the three numbers. If `group_watch_rows` is 0, stop here and drop this change. If it is above 0, also run `SELECT p.path, g.name FROM "pageWatchers" w JOIN pages p ON p.id = w."pageId" JOIN groups g ON g.id = w."groupId";` and keep the output under `tmp/` in greensight-wiki as the list to set again after the cutover.
 - [ ] 1.2 The user decides between this port and the zero-code alternative of a shared mailbox account that watches the page. The user also confirms the defaults in design.md, section Open Questions. Verify: the answers are written into design.md, section Open Questions, before task 2.1 starts.
 
 ## 2. Stored shape and migration

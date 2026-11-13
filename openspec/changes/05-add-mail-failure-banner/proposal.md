@@ -55,5 +55,5 @@ None. `openspec/specs/` holds no capability yet.
 
 ## Open Questions
 
-- Go or no-go for the whole change. The user decides after the query in task 1.1. The default is no-go until the user records a go.
-- Does the user accept that the dismissal is instance-wide, so one administrator hides the banner for all of them? The default is yes, as in the fork.
+- Go or no-go for the whole change. Answered on 2026-11-13: go. The query in task 1.1 returned zero rows, so the legacy wiki holds no recorded mail failure. The user still decided to build the change.
+- Does the user accept that the dismissal is instance-wide, so one administrator hides the banner for all of them? The default is yes, as in the fork. Answered on 2026-11-13: yes, the dismissal is instance-wide.

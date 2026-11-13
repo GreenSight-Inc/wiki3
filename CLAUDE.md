@@ -374,9 +374,8 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 | Change | State |
 | ------ | ----- |
-| `05-add-mail-failure-banner` | Conditional. Task 1.1 is a `user-run:` query on the legacy wiki that decides go or no-go. |
-| `06-add-group-watchers` | Conditional, same gate. |
-| `07-add-revision-sign-off` | Conditional, same gate. |
+| `05-add-mail-failure-banner` | Go, recorded on 2026-11-13. Not started. |
+| `07-add-revision-sign-off` | Go, recorded on 2026-11-13. Not started. |
 
 Delete a row from the table above when its change is archived.
 

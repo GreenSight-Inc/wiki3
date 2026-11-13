@@ -2,8 +2,8 @@
 
 ## 1. Go or no-go gate
 
-- [ ] 1.1 user-run: on the legacy wiki host, against the wiki database, run the read-only query `SELECT value FROM settings WHERE key = 'mailFailure';`. Expected output: zero rows, or one row whose value holds the failure count and the time of the last failure. Record the result and the go or no-go decision in proposal.md, section Open Questions, with the date. On no-go, stop here and leave every later task unchecked.
-- [ ] 1.2 On go, confirm the instance-wide dismissal with the user and record the answer in design.md, section Open Questions. Verify: both open questions in proposal.md and design.md carry an answer.
+- [x] 1.1 Result on 2026-11-13: zero rows, and the user decided go. The task as written: user-run: on the legacy wiki host, against the wiki database, run the read-only query `SELECT value FROM settings WHERE key = 'mailFailure';`. Expected output: zero rows, or one row whose value holds the failure count and the time of the last failure. Record the result and the go or no-go decision in proposal.md, section Open Questions, with the date. On no-go, stop here and leave every later task unchecked.
+- [x] 1.2 Done on 2026-11-13: the user confirmed the instance-wide dismissal. The task as written: On go, confirm the instance-wide dismissal with the user and record the answer in design.md, section Open Questions. Verify: both open questions in proposal.md and design.md carry an answer.
 
 ## 2. Backend
 

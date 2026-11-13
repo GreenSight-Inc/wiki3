@@ -6,6 +6,8 @@ In the Wiki.js 2 fork, a page can ask named approvers to sign off each published
 
 This change is conditional. It goes ahead only if the legacy wiki uses the feature today. The user runs the read-only `approvalMode`, `pageApprovers`, and `pageApprovals` queries from the plan section "User-run queries before a decision on B3 and B5". If every page has `approvalMode` off and `pageApprovals` is empty, the change is dropped. Task 1.1 is this gate. The plan estimates 5 to 8 days of work.
 
+The gate ran on 2026-11-13. The legacy wiki has `approvalMode` `off` on 586 pages, `review` on 1 page and `approve` on 1 page. `pageApprovers` holds 1 row on 1 page. `pageApprovals` holds 1 row, and the last approval is from 2026-09-30. The feature is in light use, and the user decided to build the change.
+
 ## What Changes
 
 - A page gets a sign-off mode: `off`, `review`, or `approve`. The default is `off`. A sign-off is the statement of one approver that one page version is correct.
@@ -65,11 +67,11 @@ None. `openspec/specs/` holds no capability yet.
 
 ## Open Questions
 
-- Does the legacy wiki use sign-off today? The user runs the `approvalMode`, `pageApprovers`, and `pageApprovals` queries. If every page is `off` and `pageApprovals` is empty, the change is dropped. Task 1.1 is this gate.
-- Is `manage:pages` the right page permission to set the mode and the approvers? Default applied: `manage:pages`. `write:pages` matches ownership, but a writer then removes the approvers of a page that the writer publishes. No new permission is proposed.
-- Does a group approver need every current member to sign, or one member? Default applied: every current member, as in the fork. A large group makes the Approved badge hard to reach.
-- An approver who cannot read the page cannot sign. Does that approver still count as pending? Default applied: yes. The status marks that approver as without access, and the badge stays pending.
-- Does a version that changes only metadata, such as tags, the publish dates, or the path, clear the status? Default applied: yes. Every new version clears it, as every publish did in the fork.
-- Does an approver sign a version they wrote themselves? Default applied: yes, as in the fork. A four-eyes rule refuses it instead.
-- Does the legacy sign-off history need a CSV export before cutover? Default applied: no export. The user decides after the gate query.
-- Does a page locked against edits also refuse a verdict? Default applied: no. A verdict changes nothing that the lock holds. Only the mode and the approvers follow the lock.
+- Answered on 2026-11-13: yes, lightly, and the user decided go. The counts are in section Why. The original question follows. Does the legacy wiki use sign-off today? The user runs the `approvalMode`, `pageApprovers`, and `pageApprovals` queries. If every page is `off` and `pageApprovals` is empty, the change is dropped. Task 1.1 is this gate.
+- Is `manage:pages` the right page permission to set the mode and the approvers? Default applied: `manage:pages`. `write:pages` matches ownership, but a writer then removes the approvers of a page that the writer publishes. No new permission is proposed. Answered on 2026-11-13: the user accepts the default.
+- Does a group approver need every current member to sign, or one member? Default applied: every current member, as in the fork. A large group makes the Approved badge hard to reach. Answered on 2026-11-13: the user accepts the default.
+- An approver who cannot read the page cannot sign. Does that approver still count as pending? Default applied: yes. The status marks that approver as without access, and the badge stays pending. Answered on 2026-11-13: the user accepts the default.
+- Does a version that changes only metadata, such as tags, the publish dates, or the path, clear the status? Default applied: yes. Every new version clears it, as every publish did in the fork. Answered on 2026-11-13: the user accepts the default.
+- Does an approver sign a version they wrote themselves? Default applied: yes, as in the fork. A four-eyes rule refuses it instead. Answered on 2026-11-13: the user accepts the default.
+- Does the legacy sign-off history need a CSV export before cutover? Default applied: no export. The user decides after the gate query. Answered on 2026-11-13: the user accepts the default.
+- Does a page locked against edits also refuse a verdict? Default applied: no. A verdict changes nothing that the lock holds. Only the mode and the approvers follow the lock. Answered on 2026-11-13: the user accepts the default.

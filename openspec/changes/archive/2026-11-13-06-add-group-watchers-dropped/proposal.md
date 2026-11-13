@@ -1,5 +1,7 @@
 # Proposal
 
+**Dropped on 2026-11-13.** The gate query on the legacy wiki returned 9 watch rows on 7 pages and 0 group watch rows. No group watches a page today, so the user dropped the change. Nothing of it is built. The 9 personal watches do not travel with the import, so each watcher sets the watch again after the cutover.
+
 ## Why
 
 In the Wiki.js 2 fork, a page manager can name a whole group as watchers of a page. Wiki.js 3 only lets each person watch a page for themselves. A team that relies on group watchers loses them at the migration, because the export does not carry the fork's `pageWatchers` table.
@@ -53,7 +55,7 @@ None. `openspec/specs/` holds no capability yet.
 
 ## Open Questions
 
-- Does the legacy wiki hold group watch rows? The user runs the `pageWatchers` query with `group_watch_rows` from the plan section "User-run queries before a decision on B3 and B5". Zero rows drops the change. Task 1.1 is this gate.
+- Answered on 2026-11-13: no. `watch_rows` 9, `watched_pages` 7, `group_watch_rows` 0. The change is dropped. The original question follows. Does the legacy wiki hold group watch rows? The user runs the `pageWatchers` query with `group_watch_rows` from the plan section "User-run queries before a decision on B3 and B5". Zero rows drops the change. Task 1.1 is this gate.
 - If the change goes ahead, does a shared mailbox account cover the need instead? The user decides between the port and the zero-code alternative.
 - Is `write:pages` the right page permission to assign group watchers? It matches page ownership and lifecycle rules. The fork let page managers do it, and Wiki.js 3 has no manager list. `manage:pages` is the other candidate. No new permission is proposed.
 - Today the fan-out checks only `read:pages` for a watcher, even on a page that is not live. A group watch widens that audience to every member with `read:pages`. Is that acceptable, or does the fan-out also apply the rule that only editors see a page that is not live?

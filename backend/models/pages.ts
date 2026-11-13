@@ -29,6 +29,7 @@ import type { DeletedEntry } from './tree.ts'
 import type { StoragePageContent, StoragePageRef } from './storage.ts'
 import type { PageRatingsCache } from './pageRatings.ts'
 import type { LifecycleBanner } from './pageLifecycle.ts'
+import type { SignOffMode } from './pageSignOff.ts'
 
 /** What each editor produces, which is what the content column holds. */
 const EDITOR_CONTENT_TYPES: Record<string, string> = {
@@ -404,6 +405,8 @@ export interface Page {
   lastReviewedAt: Date | null
   /** Shown over the article to every reader until somebody marks the page reviewed. */
   lifecycleBanner: LifecycleBanner | null
+  /** Whether approvers sign off each version: see `models/pageSignOff.ts`. Not page content. */
+  signOffMode: SignOffMode
 }
 
 /** Everything a page can be created with. */
@@ -1188,7 +1191,8 @@ class Pages {
       updatedAt: row.updatedAt,
       contentUpdatedAt: row.contentUpdatedAt,
       lastReviewedAt: row.lastReviewedAt ?? null,
-      lifecycleBanner: row.lifecycleBanner ?? null
+      lifecycleBanner: row.lifecycleBanner ?? null,
+      signOffMode: row.signOffMode
     }
   }
 
@@ -2642,6 +2646,8 @@ class Pages {
         }
       })
     }
+    // -> Every new version clears the sign-off, so the approvers are asked to sign this one
+    await WIKI.models.pageSignOff.versionRecorded(siteId, updated, versionId, actor)
     invalidateAppShellCache()
     // -> A board's front page is what page access is resolved against: see `models/feedback.ts`
     await WIKI.models.feedback.pageChanged(updated.editor)
@@ -2922,6 +2928,8 @@ class Pages {
         previousLocale: page.locale
       }
     })
+    // -> A move records a version too, which clears the sign-off like any other
+    await WIKI.models.pageSignOff.versionRecorded(siteId, moved, versionId, actor)
     // -> The links follow the page first, so that a title changed in the same move is then looked
     //    for where they now point
     const automated = {

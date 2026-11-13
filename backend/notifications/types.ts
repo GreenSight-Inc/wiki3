@@ -13,7 +13,9 @@ export const NOTIFICATION_EVENT_KINDS = [
   'comment:new',
   'comment:edit',
   'feedback:status',
-  'page:lifecycle'
+  'page:lifecycle',
+  'page:signOffRequest',
+  'page:signOffChanges'
 ] as const
 
 export type NotificationEventKind = (typeof NOTIFICATION_EVENT_KINDS)[number]
@@ -77,7 +79,10 @@ export interface NotificationEventData {
   /** `comment:new`: the thread it answers, and who started it. */
   parentId?: string | null
   parentAuthorId?: string | null
-  /** `comment:*`: the first few lines, as typed. Markdown, never HTML. `page:lifecycle`: the rule's name. */
+  /**
+   * `comment:*`: the first few lines, as typed. Markdown, never HTML. `page:lifecycle`: the rule's
+   * name. `page:signOffChanges`: the start of what the approver asked for.
+   */
   excerpt?: string
   /** `comment:*`: the handles written in it, lowercased. On an edit, only the ones that are new. */
   mentionHandles?: string[]
@@ -86,6 +91,10 @@ export interface NotificationEventData {
   /** `feedback:status`: where the idea was, and where it is now. */
   statusFrom?: string
   statusTo?: string
+  /** `page:signOff*`: the version to sign, or the one changes were asked for on. */
+  versionId?: string
+  /** `page:signOffChanges`: who saved that version, who is told along with the page owners. */
+  versionAuthorId?: string | null
 }
 
 /** An event as the fan-out reads it back out of the outbox. */

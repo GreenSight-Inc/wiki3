@@ -33,6 +33,7 @@ import { pageLinks } from './pageLinks.ts'
 import { pageOwners } from './pageOwners.ts'
 import { pageProblems } from './pageProblems.ts'
 import { pageRatings } from './pageRatings.ts'
+import { pageSignOff } from './pageSignOff.ts'
 import { pages } from './pages.ts'
 import { pageWatching } from './pageWatching.ts'
 import { passkeys } from './passkeys.ts'
@@ -86,6 +87,7 @@ export default {
   pageOwners,
   pageProblems,
   pageRatings,
+  pageSignOff,
   pages,
   pageWatching,
   passkeys,

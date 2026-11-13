@@ -46,4 +46,5 @@ after them, and a rule whose only action is `remove` is refused.
   nest it deeper on every firing. A destination already taken is skipped, and every firing records
   its outcome on the rule (`lastOutcome`), which the panel shows.
 - `contentUpdatedAt`, `lastReviewedAt` and `lifecycleBanner` are in `EXCLUDED_FROM_META`
-  (`models/pageHistory.ts`): bookkeeping a version must not carry or a restore put back.
+  (`models/pageHistory.ts`): bookkeeping a version must not carry or a restore put back. The
+  sign-off mode `signOffMode` sits there beside them for the same reason (see [Page sign-off](./page-sign-off.md)).

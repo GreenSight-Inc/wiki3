@@ -78,6 +78,9 @@ const EXCLUDED_FROM_META = new Set([
   // -> Not something a version records either: restoring one from before the page was locked must
   //    not unlock it, nor one from before it was unlocked lock it again
   'isEditLocked',
+  // -> Sign-off settings, beside the lifecycle columns: who is asked to sign a version is not part of
+  //    one, and restoring an old version must not switch sign-off on or off (`models/pageSignOff.ts`)
+  'signOffMode',
   // -> Held in columns of their own
   'locale',
   'path',
@@ -101,7 +104,9 @@ const NOT_REPORTED_AS_CHANGED = new Set([
   'updatedAt',
   'ratings',
   'historyData',
-  'isSearchableComputed'
+  'isSearchableComputed',
+  // -> Not page content (see `EXCLUDED_FROM_META`), so never a field a version changed
+  'signOffMode'
 ])
 
 /** Who a version is attributed to. Null once that account is gone; the version stays. */

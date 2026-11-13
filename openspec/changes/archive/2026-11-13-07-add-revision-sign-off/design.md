@@ -108,7 +108,7 @@ A new file `backend/api/pageSignOff.ts`, registered in `backend/api/index.ts` ne
 - `PUT /sites/:siteId/pages/:pageId/sign-off`, body `{ mode, users, groups }`. Answers `{ ok, signOff: PageSignOffStatus }`. Audit `updatePageSignOff` with `pageId`, `siteId`, `locale`, `path`, and `mode`.
 - `POST /sites/:siteId/pages/:pageId/sign-off/verdict`, body `{ versionId, verdict, comment }`. Answers `{ ok, signOff: PageSignOffStatus }`. Audit `signOffPage` or `requestSignOffChanges` with `pageId`, `siteId`, `locale`, `path`, and `versionId`, never the comment.
 
-The page payload of `GET /sites/:siteId/pages/:pageIdOrHash`, which serves both the id and the path hash lookup, gains `signOff`: null for mode `off`, else `{ mode, versionId, isLive, required, signed, changesRequested, isApproved, viewer }`. It costs two queries, and none for mode `off`. The `Page` schema in `backend/api/schemas/page.ts` gains the field. No route returns module configuration, so no sensitive prop needs a mask. No response carries an email.
+The page payload of `GET /sites/:siteId/pages/:pageIdOrHash`, which serves both the id and the path hash lookup, gains `signOff`: null for mode `off`, else `{ mode, versionId, isLive, required, signed, changesRequested, isApproved, viewer }`. It costs three queries (`latestVersionId`, `currentApproverIds`, and the approver and verdict join), and none for mode `off`. The `Page` schema in `backend/api/schemas/page.ts` gains the field. No route returns module configuration, so no sensitive prop needs a mask. No response carries an email.
 
 ### 11. Model
 
@@ -143,7 +143,10 @@ A new file `backend/models/pageSignOff.ts` is registered in `backend/models/inde
 | `editor.props.signOffModeApproveHint` | Approvers are asked to approve each version. The page shows Approved once all of them signed off. |
 | `editor.props.signOffUsers` | Approvers |
 | `editor.props.signOffGroups` | Approver groups |
+| `editor.props.signOffNoListGroups` | You are not allowed to look up groups, so you can remove an approver group but not add one. |
+| `editor.props.signOffNoListUsers` | You are not allowed to look up users, so you can remove an approver but not add one. |
 | `editor.props.signOffReadOnly` | Only somebody who can manage this page can change its sign-off. |
+| `editor.props.signOffRemoveApprover` | Remove {name} |
 | `common.page.signOff.title` | Sign-off |
 | `common.page.signOff.approved` | Approved |
 | `common.page.signOff.pending` | Awaiting sign-off ({signed} of {required}) |
@@ -153,6 +156,7 @@ A new file `backend/models/pageSignOff.ts` is registered in `backend/models/inde
 | `common.page.signOff.sign` | Sign off |
 | `common.page.signOff.requestChanges` | Request changes |
 | `common.page.signOff.comment` | What needs to change |
+| `common.page.signOff.back` | Back |
 | `common.page.signOff.stale` | A newer version was published. Read it, then sign off again. |
 | `common.page.signOff.noAccess` | Cannot read this page |
 | `common.page.signOff.verdictSigned` | Signed off |

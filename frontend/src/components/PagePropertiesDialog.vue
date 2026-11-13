@@ -155,9 +155,7 @@
           bordered>
           <w-item v-for="(rule, idx) of lifecycleRules" :key="rule.id ?? rule.key">
             <w-item-section>
-              <w-item-label
-                ><strong>{{ rule.name }}</strong></w-item-label
-              >
+              <w-item-label><strong>{{ rule.name }}</strong></w-item-label>
               <w-item-label caption>{{ triggerSummary(rule) }}</w-item-label>
               <w-item-label v-if="removalSummary(rule)" caption>
                 {{ removalSummary(rule) }}
@@ -279,6 +277,113 @@
           </template>
         </w-form>
       </w-card-section>
+      <w-card-section id="refCardSignOff" v-if="showSignOffSection">
+        <div class="w-section-header">{{ t('editor.props.signOff') }}</div>
+        <w-form class="gap-4">
+          <div class="text-caption">{{ t('editor.props.signOffHint') }}</div>
+          <template v-if="mayManagePage">
+            <div>
+              <w-btn-toggle
+                :model-value="signOff.mode"
+                push
+                glossy
+                no-caps
+                toggle-color="primary"
+                :options="signOffModes"
+                @update:model-value="updateSignOff({ mode: $event })" />
+            </div>
+            <div class="text-caption">
+              <em>{{ t(signOffHints[signOff.mode]) }}</em>
+            </div>
+            <template v-if="signOff.mode !== `off`">
+              <w-select
+                v-if="mayListUsers"
+                :model-value="signOff.users"
+                :options="state.userOptions"
+                :label="t(`editor.props.signOffUsers`)"
+                :no-options-label="t(`editor.props.ownersNoResults`)"
+                :loading="state.ownerLookups > 0"
+                option-value="id"
+                option-label="name"
+                multiple
+                use-input
+                use-chips
+                remote-filter
+                outlined
+                dense
+                @filter="lookupUsers"
+                @update:model-value="updateSignOff({ users: $event })" />
+              <!-- -> Without a lookup rung nobody can be added, but an approver can still be removed -->
+              <template v-else>
+                <div class="text-caption text-black/54 dark:text-white/60">
+                  {{ t('editor.props.signOffNoListUsers') }}
+                </div>
+                <div v-if="signOff.users.length > 0" class="flex flex-wrap gap-1">
+                  <w-chip
+                    v-for="usr of signOff.users"
+                    :key="usr.id"
+                    :label="usr.name"
+                    :remove-label="t('editor.props.signOffRemoveApprover', { name: usr.name })"
+                    size="sm"
+                    removable
+                    @remove="removeSignOffUser(usr.id)" />
+                </div>
+              </template>
+              <w-select
+                v-if="mayListGroups"
+                :model-value="signOff.groups"
+                :options="state.groupOptions"
+                :label="t(`editor.props.signOffGroups`)"
+                :no-options-label="t(`editor.props.ownersNoResults`)"
+                :loading="state.ownerLookups > 0"
+                option-value="id"
+                option-label="name"
+                multiple
+                use-input
+                use-chips
+                remote-filter
+                outlined
+                dense
+                @filter="lookupGroups"
+                @update:model-value="updateSignOff({ groups: $event })" />
+              <template v-else>
+                <div class="text-caption text-black/54 dark:text-white/60">
+                  {{ t('editor.props.signOffNoListGroups') }}
+                </div>
+                <div v-if="signOff.groups.length > 0" class="flex flex-wrap gap-1">
+                  <w-chip
+                    v-for="grp of signOff.groups"
+                    :key="grp.id"
+                    :label="grp.name"
+                    :remove-label="t('editor.props.signOffRemoveApprover', { name: grp.name })"
+                    size="sm"
+                    removable
+                    @remove="removeSignOffGroup(grp.id)" />
+                </div>
+              </template>
+            </template>
+          </template>
+          <!-- -> Who signs it off is a writer's to know, and a manager's to change -->
+          <template v-else>
+            <div>
+              <w-chip
+                :label="t(signOffModeLabels[signOff.mode])"
+                size="sm"
+                color="primary"
+                text-color="white" />
+            </div>
+            <div
+              v-if="signOff.users.length + signOff.groups.length > 0"
+              class="flex flex-wrap gap-1">
+              <w-chip v-for="usr of signOff.users" :key="usr.id" :label="usr.name" size="sm" />
+              <w-chip v-for="grp of signOff.groups" :key="grp.id" :label="grp.name" size="sm" />
+            </div>
+            <div class="text-caption text-black/54 dark:text-white/60">
+              {{ t('editor.props.signOffReadOnly') }}
+            </div>
+          </template>
+        </w-form>
+      </w-card-section>
       <w-card-section class="alt-card" id="refCardPublishState">
         <div class="w-section-header">{{ t('editor.props.publishState') }}</div>
         <w-form class="gap-4">
@@ -319,9 +424,7 @@
           <w-item v-for="rel of pageStore.relations" :key="`rel-id-` + rel.id">
             <w-item-section side><w-icon :name="rel.icon" /></w-item-section>
             <w-item-section>
-              <w-item-label
-                ><strong>{{ rel.label }}</strong></w-item-label
-              >
+              <w-item-label><strong>{{ rel.label }}</strong></w-item-label>
               <w-item-label caption>{{ rel.caption }}</w-item-label>
             </w-item-section>
             <w-item-section side>
@@ -751,6 +854,35 @@ const ownershipHints = {
 }
 
 /*
+  The sign-off as this panel has it: the pending edit, else what the server last said. Changed only
+  with `manage:pages` here, which is what `PUT …/sign-off` checks; read-only for a writer, and not
+  shown to anybody else, nor in suggest mode. `pageStore.signOffSettings` is null until loaded.
+*/
+const mayWritePage = computed(() => userStore.pagePermissions.includes('write:pages'))
+const showSignOffSection = computed(
+  () =>
+    editorStore.mode !== 'suggest' &&
+    (mayManagePage.value || mayWritePage.value) &&
+    pageStore.signOffSettings !== null
+)
+const signOff = computed(
+  () => editorStore.signOff ?? pageStore.signOffSettings ?? { mode: 'off', users: [], groups: [] }
+)
+const signOffModeLabels = {
+  off: 'editor.props.signOffModeOff',
+  review: 'editor.props.signOffModeReview',
+  approve: 'editor.props.signOffModeApprove'
+}
+const signOffModes = computed(() =>
+  Object.entries(signOffModeLabels).map(([value, label]) => ({ label: t(label), value }))
+)
+const signOffHints = {
+  off: 'editor.props.signOffModeOffHint',
+  review: 'editor.props.signOffModeReviewHint',
+  approve: 'editor.props.signOffModeApproveHint'
+}
+
+/*
   The lifecycle rules as this panel has them: the pending edit, else what the server last said -- on
   the same terms as the owners above, and for the same reason held apart from the page's own fields.
 */
@@ -800,6 +932,12 @@ const quickaccess = computed(() =>
       icon: 'la:user-tag',
       label: t('editor.props.ownership'),
       shown: showOwnershipSection.value
+    },
+    {
+      key: 'refCardSignOff',
+      icon: 'la:clipboard-check',
+      label: t('editor.props.signOff'),
+      shown: showSignOffSection.value
     },
     { key: 'refCardPublishState', icon: 'la:power-off', label: t('editor.props.publishState') },
     { key: 'refCardRelations', icon: 'la:sun', label: t('editor.props.relations') },
@@ -881,6 +1019,32 @@ function sameOwnership(a, b) {
   }
   const ids = (o) => (o.mode === 'creator' ? [] : o[o.mode].map((owner) => owner.id).sort())
   return ids(a).join() === ids(b).join()
+}
+
+/**
+ * Change the sign-off, as a pending edit beside the page -- see `editorStore.signOff`. Back to nothing
+ * pending once it matches what is stored again. Saving it records no version.
+ */
+function updateSignOff(patch) {
+  const next = { ...signOff.value, ...patch }
+  editorStore.signOff = sameSignOff(next, pageStore.signOffSettings) ? null : next
+}
+function removeSignOffUser(id) {
+  updateSignOff({ users: signOff.value.users.filter((usr) => usr.id !== id) })
+}
+function removeSignOffGroup(id) {
+  updateSignOff({ groups: signOff.value.groups.filter((grp) => grp.id !== id) })
+}
+function sameSignOff(a, b) {
+  if (!b || a.mode !== b.mode) {
+    return false
+  }
+  const ids = (list) =>
+    list
+      .map((item) => item.id)
+      .sort()
+      .join()
+  return ids(a.users) === ids(b.users) && ids(a.groups) === ids(b.groups)
 }
 
 /*
@@ -1031,6 +1195,15 @@ function toggleRequirePassword(newValue) {
 
 onMounted(() => {
   state.requirePassword = pageStore.password?.length > 0
+
+  // -> Who signs the page off is not on the page payload, which tells every reader the counts only
+  if (
+    pageStore.id &&
+    pageStore.signOffSettings === null &&
+    (mayManagePage.value || mayWritePage.value)
+  ) {
+    pageStore.pageLoadSignOff().catch((err) => console.warn(err))
+  }
 
   // -> Title is the field this panel is opened to edit, so the caret starts there
   nextTick(() => {

@@ -51,6 +51,12 @@ export const useEditorStore = defineStore('editor', {
      */
     lifecycleRules: null,
     /**
+     * The page's sign-off as the properties panel has it, `{ mode, users, groups }`, while that
+     * differs from `pageStore.signOffSettings`; null when nothing about it is pending. Held here for
+     * the reason `ownership` is: saved on its own and in no version.
+     */
+    signOff: null,
+    /**
      * Whether the open editor holds its document and can take an edit from outside -- mounted, and
      * past the wait for a collaborative room. Until then a document put into it is overwritten: the
      * room's binding replaces whatever the editor was holding. Set by the editor itself, since only it
@@ -63,11 +69,12 @@ export const useEditorStore = defineStore('editor', {
       return (
         (state.lastSaveTimestamp && state.lastSaveTimestamp !== state.lastChangeTimestamp) ||
         state.ownership !== null ||
-        state.lifecycleRules !== null
+        state.lifecycleRules !== null ||
+        state.signOff !== null
       )
     },
     /**
-     * `hasPendingChanges` less the owners and the lifecycle rules: whether saving would have anything to say about the page
+     * `hasPendingChanges` less the owners, the lifecycle rules and the sign-off: whether saving would have anything to say about the page
      * itself, and so record a version of it.
      */
     hasPendingPageChanges: (state) => {
@@ -123,7 +130,8 @@ export const useEditorStore = defineStore('editor', {
         lastChangeTimestamp: now,
         lastSaveTimestamp: now,
         ownership: null,
-        lifecycleRules: null
+        lifecycleRules: null,
+        signOff: null
       })
     },
     /**

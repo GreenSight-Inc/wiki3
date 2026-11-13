@@ -242,6 +242,30 @@
             </w-list>
           </w-menu>
         </w-btn>
+        <!--
+          Where the page's sign-off stands, for every reader who can read the page, while sign-off is
+          on. Palette colours only: the chip's own neutral tint for pending and review, `positive` for
+          Approved and `negative` for changes requested. Opens the list, and an approver's actions.
+          `dark:text-white`, because the neutral chip takes its text colour from the button, and a
+          button's own default text colour is black in either theme.
+        -->
+        <w-btn
+          class="ms-4 dark:text-white"
+          v-if="pageStore.signOff"
+          flat
+          dense
+          no-caps
+          padding="none"
+          :aria-label="signOffLabel"
+          @click="openSignOff">
+          <w-chip
+            size="sm"
+            :icon="signOffIcon"
+            :color="signOffColor"
+            :text-color="signOffColor ? `white` : null"
+            :label="signOffLabel" />
+          <w-tooltip>{{ t('common.page.signOff.title') }}</w-tooltip>
+        </w-btn>
       </template>
       <template v-if="editorStore.isActive">
         <!--
@@ -512,6 +536,47 @@ const isEditing = computed(() => editorStore.isActive && !isSuggesting.value)
 
 /** How many suggestions are waiting on this page, which is what the review badge counts. */
 const pendingCount = computed(() => pageStore.pendingSubmissions.length)
+
+/*
+  The sign-off badge: Approved, changes requested, or how far the signing has got -- pending progress
+  in approve mode, a plain count in review mode. Literal icon names, so that the build bundles them.
+*/
+const signOffColor = computed(() => {
+  const signOff = pageStore.signOff
+  if (signOff?.isApproved) {
+    return 'positive'
+  }
+  return signOff?.isLive && signOff.changesRequested > 0 ? 'negative' : null
+})
+const signOffIcon = computed(() => {
+  const signOff = pageStore.signOff
+  if (signOff?.isApproved) {
+    return 'mdi:check-decagram-outline'
+  }
+  return signOff?.isLive && signOff.changesRequested > 0
+    ? 'mdi:alert-box-outline'
+    : 'mdi:clock-outline'
+})
+const signOffLabel = computed(() => {
+  const signOff = pageStore.signOff
+  if (!signOff) {
+    return ''
+  }
+  if (signOff.isApproved) {
+    return t('common.page.signOff.approved')
+  }
+  // -> Only an editor sees a page that is not live, and nobody can sign it until it is
+  if (!signOff.isLive) {
+    return t('common.page.signOff.notLive')
+  }
+  if (signOff.changesRequested > 0) {
+    return t('common.page.signOff.changesRequested')
+  }
+  return t(
+    signOff.mode === 'approve' ? 'common.page.signOff.pending' : 'common.page.signOff.reviewed',
+    { signed: signOff.signed, required: signOff.required }
+  )
+})
 
 /**
  * Whether this is a redirection — one being read, edited or created alike, since `pageCreate` puts the
@@ -986,6 +1051,13 @@ function printPage() {
 
 function humanizeDate(val) {
   return userStore.formatDateTime(t, val)
+}
+
+/** The sign-off of the page: who signed, and an approver's actions. */
+function openSignOff() {
+  dialog({
+    component: defineAsyncComponent(() => import('../components/PageSignOffDialog.vue'))
+  })
 }
 
 /**

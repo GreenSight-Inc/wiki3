@@ -5,6 +5,8 @@ import { pageCreated } from './categories/pageCreated.ts'
 import { pageDeleted } from './categories/pageDeleted.ts'
 import { pageLifecycle } from './categories/pageLifecycle.ts'
 import { reviewRequested } from './categories/reviewRequested.ts'
+import { signOffChangesRequested } from './categories/signOffChangesRequested.ts'
+import { signOffRequested } from './categories/signOffRequested.ts'
 import { watchedPage } from './categories/watchedPage.ts'
 import { watchedPageComment } from './categories/watchedPageComment.ts'
 import type {
@@ -33,6 +35,8 @@ export const NOTIFICATION_CATEGORIES = {
   mention,
   feedbackStatus,
   reviewRequested,
+  signOffRequested,
+  signOffChangesRequested,
   pageLifecycle,
   pageCreated,
   pageDeleted

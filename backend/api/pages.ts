@@ -1103,7 +1103,8 @@ async function routes(app: FastifyInstance) {
         submitter,
         ownership,
         lifecycleRules,
-        canMarkReviewed
+        canMarkReviewed,
+        signOff
       ] = await Promise.all([
         WIKI.models.approvals.pageViewerState(req, req.params.siteId, {
           id: page.id,
@@ -1154,7 +1155,22 @@ async function routes(app: FastifyInstance) {
           ? mayWrite ||
             mayOnPage(req, 'manage:pages', page) ||
             WIKI.models.pageOwners.isOwner(page, actorId)
-          : false
+          : false,
+        /*
+          Where its sign-off stands, for the header badge: the counts and the reader's own part, never
+          who the approvers are. Nothing to ask while sign-off is off, which is nearly every page.
+        */
+        page.signOffMode === 'off'
+          ? null
+          : WIKI.models.pageSignOff.statusOf(
+              page,
+              {
+                userId: actorId,
+                mayEdit: mayWrite || mayOnPage(req, 'manage:pages', page),
+                mayManage: mayOnPage(req, 'manage:pages', page)
+              },
+              { summary: true }
+            )
       ])
       const blog = listing?.kind === 'blog' ? listing.blog : null
       const { ratings, ...pageFields } = page
@@ -1199,6 +1215,7 @@ async function routes(app: FastifyInstance) {
               }
             : null,
         ownership,
+        signOff,
         lifecycleRules,
         viewer: {
           canMarkReviewed,

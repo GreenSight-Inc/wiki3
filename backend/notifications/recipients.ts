@@ -260,6 +260,80 @@ export function ownersOf(event: NotificationEvent, after: string | null): AsyncI
   })
 }
 
+/**
+ * The current sign-off approvers of the page an event is about: the users it names and every member
+ * of the groups it names, read now. Active accounts that are not system accounts, each once — the
+ * set `pageSignOff.currentApproverIds` counts.
+ */
+export function approversOf(
+  event: NotificationEvent,
+  after: string | null
+): AsyncIterable<string[]> {
+  const pageId = event.data.page?.id
+  if (!pageId) {
+    return fromList([], after)
+  }
+  return keyset(after, async (cursor, limit) => {
+    const result = await WIKI.db.execute(sql`
+      SELECT u.id FROM (
+        SELECT a."userId" AS id FROM "pageSignOffApprovers" a
+        WHERE a."pageId" = ${pageId} AND a."userId" IS NOT NULL
+        UNION
+        SELECT ug."userId" AS id FROM "pageSignOffApprovers" a
+        JOIN "userGroups" ug ON ug."groupId" = a."groupId"
+        WHERE a."pageId" = ${pageId}
+      ) audience
+      JOIN users u ON u.id = audience.id AND u."isActive" AND NOT u."isSystem"
+      ${cursor ? sql`WHERE u.id > ${cursor}::uuid` : sql``}
+      ORDER BY u.id
+      LIMIT ${limit}
+    `)
+    return (result.rows as { id: string }[]).map((row) => row.id)
+  })
+}
+
+/**
+ * Who saved the version an approver asked for changes on, and the page's owners as `ownersOf` reads
+ * them: the people a request for changes is addressed to.
+ */
+export function versionAuthorAndOwnersOf(
+  event: NotificationEvent,
+  after: string | null
+): AsyncIterable<string[]> {
+  const pageId = event.data.page?.id
+  if (!pageId) {
+    return fromList([], after)
+  }
+  const authorId = event.data.versionAuthorId ?? null
+  return keyset(after, async (cursor, limit) => {
+    const result = await WIKI.db.execute(sql`
+      SELECT u.id FROM (
+        SELECT ${authorId}::uuid AS id
+        UNION
+        SELECT po."userId" AS id FROM "pageOwners" po
+        WHERE po."pageId" = ${pageId} AND po."userId" IS NOT NULL
+        UNION
+        SELECT ug."userId" AS id FROM "pageOwners" po
+        JOIN "userGroups" ug ON ug."groupId" = po."groupId"
+        WHERE po."pageId" = ${pageId}
+        UNION
+        SELECT p."creatorId" AS id FROM pages p
+        WHERE p.id = ${pageId} AND NOT EXISTS (
+          SELECT 1 FROM "pageOwners" po
+          LEFT JOIN users ou ON ou.id = po."userId"
+          WHERE po."pageId" = ${pageId}
+            AND (po."groupId" IS NOT NULL OR (ou."isActive" AND NOT ou."isSystem"))
+        )
+      ) audience
+      JOIN users u ON u.id = audience.id AND u."isActive" AND NOT u."isSystem"
+      ${cursor ? sql`WHERE u.id > ${cursor}::uuid` : sql``}
+      ORDER BY u.id
+      LIMIT ${limit}
+    `)
+    return (result.rows as { id: string }[]).map((row) => row.id)
+  })
+}
+
 /** A single id, or nobody. */
 export function only(id: string | null | undefined, after: string | null): AsyncIterable<string[]> {
   return fromList(id ? [id] : [], after)

@@ -44,6 +44,38 @@ export function liveCondition(columns: PublishColumns): SQL {
     AND (${columns.publishEndDate} IS NULL OR ${columns.publishEndDate} > ${now}::timestamp)))`
 }
 
+/**
+ * Whether a page row is live now: the JavaScript twin of `liveCondition`, for a page already loaded.
+ * The same ends: `publishStartDate` inclusive, `publishEndDate` exclusive, either open when unset.
+ * The dates are drizzle `Date`s holding UTC, so they compare as instants.
+ */
+export function isLiveNow(page: {
+  publishState: string
+  publishStartDate?: Date | null
+  publishEndDate?: Date | null
+}): boolean {
+  if (page.publishState === 'published') {
+    return true
+  }
+  if (page.publishState !== 'scheduled') {
+    return false
+  }
+  const now = Temporal.Now.instant()
+  if (
+    page.publishStartDate &&
+    Temporal.Instant.compare(page.publishStartDate.toTemporalInstant(), now) > 0
+  ) {
+    return false
+  }
+  if (
+    page.publishEndDate &&
+    Temporal.Instant.compare(page.publishEndDate.toTemporalInstant(), now) <= 0
+  ) {
+    return false
+  }
+  return true
+}
+
 /** Whether this actor may see this page while it is not live. */
 export function maySeeUnpublished(actor: AccessActor, page: RulePageRef): boolean {
   return UNPUBLISHED_PERMISSIONS.some((permission) =>

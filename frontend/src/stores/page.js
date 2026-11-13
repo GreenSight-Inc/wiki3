@@ -153,6 +153,18 @@ export const usePageStore = defineStore('page', {
      * them. Like `ownership`, not a page field: edited as `editorStore.lifecycleRules`.
      */
     lifecycleRules: null,
+    /**
+     * Where the page's sign-off stands, for the header badge: `PageSignOffStatus` in the API, from the
+     * page payload or a later `pageLoadSignOff`, or null while sign-off is off. Not a page field, so
+     * only ever written with a `$patch` object -- see `isSavedFieldMutation`.
+     */
+    signOff: null,
+    /**
+     * The sign-off mode and approvers as the server last answered, `{ mode, users, groups }`, for the
+     * properties panel, or null until `pageLoadSignOff` has read them for a reader who may see them.
+     * Like `ownership`, not a page field: edited as `editorStore.signOff`.
+     */
+    signOffSettings: null,
     /** What a lifecycle rule put over the article, `{ message, icon, ruleId, setAt }`, or null. */
     lifecycleBanner: null,
     /** Whether this reader may take the banner down, by marking the page reviewed. */
@@ -428,7 +440,9 @@ export const usePageStore = defineStore('page', {
             */
             notFound: false,
             folderId: '',
-            storedProps: storedPropsOf(pageData)
+            storedProps: storedPropsOf(pageData),
+            // -> The previous page's, until the panel reads this one's
+            signOffSettings: null
           })
           this.applyViewerState(pageData.viewer)
           // Update editor state timestamps
@@ -438,7 +452,8 @@ export const usePageStore = defineStore('page', {
             lastSaveTimestamp: curDate,
             // -> An owner or rule change left pending was about the page that was in the store before
             ownership: null,
-            lifecycleRules: null
+            lifecycleRules: null,
+            signOff: null
           })
         })
       } catch (err) {
@@ -642,6 +657,8 @@ export const usePageStore = defineStore('page', {
           lifecycleRules: null,
           lifecycleBanner: null,
           canMarkReviewed: false,
+          signOff: null,
+          signOffSettings: null,
           notFound: true,
           // -> Not the previous page's: what the sidebar shows here is the folder's, or what a page here
           //    would inherit
@@ -882,6 +899,9 @@ export const usePageStore = defineStore('page', {
         ownership: { mode: 'creator', users: [], groups: [] },
         lifecycleRules: [],
         lifecycleBanner: null,
+        // -> Off, as every page starts; never carried over by a copy
+        signOff: null,
+        signOffSettings: { mode: 'off', users: [], groups: [] },
         // -> Not the page this one was started from: a copy of a locked page is a new, open one
         isEditLocked: false,
         // -> The page being created is very often the one that was missing, and it is not missing now
@@ -1207,8 +1227,8 @@ export const usePageStore = defineStore('page', {
     /**
      * PAGE SAVE
      *
-     * The page, and then its owners and its lifecycle rules if they were changed. Separate requests
-     * because neither is page content: a save of the page records a version, and they are in no
+     * The page, and then its owners, its lifecycle rules and its sign-off if they were changed.
+     * Separate requests because none of them is page content: a save of the page records a version, and they are in no
      * version. Which is also why a save that changed nothing BUT those sends the page not at all -- it
      * would record a version that differs from the one before it in nothing.
      */
@@ -1218,10 +1238,15 @@ export const usePageStore = defineStore('page', {
       // -> Taken now: settling the editor below empties them
       const ownership = editorStore.ownership
       const lifecycleRules = editorStore.lifecycleRules
+      const signOff = editorStore.signOff
       // -> What has not gone up yet, and is put back as pending if anything below fails
-      let unsent = { ownership, lifecycleRules }
+      let unsent = { ownership, lifecycleRules, signOff }
       try {
-        if (isCreate || (!ownership && !lifecycleRules) || editorStore.hasPendingPageChanges) {
+        if (
+          isCreate ||
+          (!ownership && !lifecycleRules && !signOff) ||
+          editorStore.hasPendingPageChanges
+        ) {
           await this.pageSaveFields()
         }
 
@@ -1245,6 +1270,14 @@ export const usePageStore = defineStore('page', {
           await this.pageSaveLifecycleRules(lifecycleRules)
           unsent = { ...unsent, lifecycleRules: null }
         }
+        if (signOff) {
+          await this.pageSaveSignOff(signOff)
+          unsent = { ...unsent, signOff: null }
+        }
+        // -> A save records a new version, which clears the sign-off the header is showing
+        if (this.signOff && !signOff) {
+          await this.pageLoadSignOff().catch((err) => console.warn(err))
+        }
         if (isCreate) {
           /*
             Awaited, because the caller closes the editor the moment this resolves. An unawaited
@@ -1258,7 +1291,8 @@ export const usePageStore = defineStore('page', {
         // -> Saving again sends whatever did not make it, the page having been saved by then or not
         editorStore.$patch({
           ownership: unsent.ownership ?? editorStore.ownership,
-          lifecycleRules: unsent.lifecycleRules ?? editorStore.lifecycleRules
+          lifecycleRules: unsent.lifecycleRules ?? editorStore.lifecycleRules,
+          signOff: unsent.signOff ?? editorStore.signOff
         })
         console.warn(err)
         throw err
@@ -1433,6 +1467,83 @@ export const usePageStore = defineStore('page', {
       this.$patch({ ownership: resp.ownership })
       // -> The properties panel counts any change to this store as an edit, this one included
       editorStore.settleChanges()
+    },
+    /**
+     * PAGE - LOAD SIGN-OFF
+     *
+     * Where the page's sign-off stands, with the approvers and their verdicts for a reader who may see
+     * them -- which is also what the properties panel draws its Sign-off section from.
+     *
+     * @param {string} [versionId] An older version to ask about, rather than the current one
+     * @returns The status, `PageSignOffStatus` in the API
+     */
+    async pageLoadSignOff(versionId) {
+      const siteStore = useSiteStore()
+      const status = unwrap(
+        await API_CLIENT.get(`sites/${siteStore.id}/pages/${this.id}/sign-off`, {
+          searchParams: versionId ? { versionId } : {}
+        }).json()
+      )
+      if (!versionId) {
+        // -> A `$patch` object, so that loading the status is never taken for an edit of the page
+        this.$patch({
+          signOff: status.mode === 'off' ? null : status,
+          signOffSettings: status.approvers
+            ? { mode: status.mode, users: status.approvers.users, groups: status.approvers.groups }
+            : null
+        })
+      }
+      return status
+    },
+    /**
+     * PAGE SAVE - SIGN-OFF
+     *
+     * The mode and the approvers the properties panel picked. Left pending by `pageSave` when it
+     * fails, as the owners are.
+     *
+     * @param settings `{ mode, users, groups }`, as `editorStore.signOff` holds it
+     */
+    async pageSaveSignOff(settings) {
+      const editorStore = useEditorStore()
+      const siteStore = useSiteStore()
+      const resp = unwrap(
+        await API_CLIENT.put(`sites/${siteStore.id}/pages/${this.id}/sign-off`, {
+          json: {
+            mode: settings.mode,
+            users: settings.users.map((user) => user.id),
+            groups: settings.groups.map((group) => group.id)
+          }
+        }).json()
+      )
+      const approvers = resp.signOff.approvers ?? { users: settings.users, groups: settings.groups }
+      this.$patch({
+        signOff: resp.signOff.mode === 'off' ? null : resp.signOff,
+        signOffSettings: {
+          mode: resp.signOff.mode,
+          users: approvers.users,
+          groups: approvers.groups
+        }
+      })
+      editorStore.settleChanges()
+    },
+    /**
+     * PAGE - RECORD SIGN-OFF
+     *
+     * The reader's verdict on the version they read, as one of its approvers.
+     *
+     * @param {{ versionId: string, verdict: 'signed' | 'changesRequested', comment?: string }} verdict
+     * @returns The status after the verdict
+     * @throws The request's failure, a 409 among them when a newer version was published meanwhile
+     */
+    async pageRecordSignOff({ versionId, verdict, comment }) {
+      const siteStore = useSiteStore()
+      const resp = unwrap(
+        await API_CLIENT.post(`sites/${siteStore.id}/pages/${this.id}/sign-off/verdict`, {
+          json: { versionId, verdict, ...(comment ? { comment } : {}) }
+        }).json()
+      )
+      this.$patch({ signOff: resp.signOff })
+      return resp.signOff
     },
     /**
      * Out of the editor: the URL first, then the state.

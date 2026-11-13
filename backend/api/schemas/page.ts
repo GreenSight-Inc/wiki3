@@ -371,6 +371,11 @@ export async function registerSchemas(app: FastifyInstance): Promise<void> {
         description:
           'Who the page is owned by. Only for a requester holding `write:pages` on it, who is whoever can change it; null for anybody else. Present when a page is fetched on its own. Not part of the page’s content: it is changed with `PUT …/ownership`, never by a save, and no version records it.'
       },
+      signOff: {
+        anyOf: [{ type: 'null' }, { $ref: 'PageSignOffStatus#' }],
+        description:
+          'Where the page’s sign-off stands, for the header badge: the counts, whether the current version is approved, and the requester’s own part. Never who the approvers are, which `GET …/sign-off` answers. Null while sign-off is off. Present when a page is fetched on its own. Not page content: changed with `PUT …/sign-off`, and no version records it.'
+      },
       viewer: {
         type: 'object',
         description:

@@ -1239,6 +1239,13 @@ export const pages = pgTable(
      * somebody marks the page reviewed. Not content: setting it records no version and moves nothing.
      */
     lifecycleBanner: jsonb(),
+    /**
+     * Whether named approvers are asked to sign off each version: `off`, `review` or `approve`
+     * (`SIGN_OFF_MODES` in `models/pageSignOff.ts`). A varchar rather than an enum, for the reason
+     * `pageHistory.action` is one. Not page content: setting it records no version, and no version
+     * carries it or a restore puts it back.
+     */
+    signOffMode: varchar({ length: 16 }).notNull().default('off'),
     authorId: uuid()
       .notNull()
       .references(() => users.id),
@@ -1561,6 +1568,64 @@ export const pageOwners = pgTable(
     index('pageOwners_userId_idx').on(table.userId),
     index('pageOwners_groupId_idx').on(table.groupId),
     check('pageOwners_owner_check', sql`num_nonnulls(${table.userId}, ${table.groupId}) = 1`)
+  ]
+)
+
+// PAGE SIGN-OFF APPROVERS -------------
+/**
+ * Who is asked to sign off each version of a page: users and groups, mixed on one page, unlike
+ * `pageOwners`. A group stands for every one of its members at the time of each check, so no
+ * membership is copied here. Not page content, for the reason `pageOwners` is a table.
+ */
+export const pageSignOffApprovers = pgTable(
+  'pageSignOffApprovers',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    pageId: uuid()
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    userId: uuid().references(() => users.id, { onDelete: 'cascade' }),
+    groupId: uuid().references(() => groups.id, { onDelete: 'cascade' })
+  },
+  (table) => [
+    uniqueIndex('pageSignOffApprovers_page_user_idx').on(table.pageId, table.userId),
+    uniqueIndex('pageSignOffApprovers_page_group_idx').on(table.pageId, table.groupId),
+    index('pageSignOffApprovers_userId_idx').on(table.userId),
+    index('pageSignOffApprovers_groupId_idx').on(table.groupId),
+    check(
+      'pageSignOffApprovers_approver_check',
+      sql`num_nonnulls(${table.userId}, ${table.groupId}) = 1`
+    )
+  ]
+)
+
+// PAGE SIGN-OFFS ----------------------
+/**
+ * One approver's verdict on one version of a page: `signed` or `changesRequested`, the second with a
+ * comment. A second verdict on the same version replaces the first.
+ *
+ * `versionId` is not a foreign key, for the reason `pageHistory.pageId` is not one: the history purge
+ * deletes versions, and what was signed stays on record until the page or the account goes. The
+ * status counts only the rows of the current version, so a new version clears it without a delete.
+ */
+export const pageSignOffs = pgTable(
+  'pageSignOffs',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    pageId: uuid()
+      .notNull()
+      .references(() => pages.id, { onDelete: 'cascade' }),
+    versionId: uuid().notNull(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    verdict: varchar({ length: 24 }).notNull(),
+    comment: text(),
+    createdAt: timestamp().notNull().defaultNow()
+  },
+  (table) => [
+    uniqueIndex('pageSignOffs_version_user_idx').on(table.versionId, table.userId),
+    index('pageSignOffs_page_version_idx').on(table.pageId, table.versionId)
   ]
 )
 

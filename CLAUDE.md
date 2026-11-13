@@ -370,13 +370,9 @@ This section applies to the GreenSight fork only. Everything above it comes from
 
 **Changes go through OpenSpec.** `openspec/config.yaml` holds the project context, the Do not add list, the working rules A to F, the artifact rules, and the local check set. Each change lives under `openspec/changes/<name>/` with a proposal, a delta spec, a design, and tasks. The `/opsx:*` commands and the `openspec-*` skills run the workflow.
 
-**The number prefix of a change is the apply order.** Apply the lowest-numbered change with unticked tasks first:
+**The number prefix of a change is the apply order.** Apply the lowest-numbered change with unticked tasks first. No change is active now; the changes 01 to 07 are archived or dropped under `openspec/changes/archive/`. A new change takes the next free number.
 
-| Change | State |
-| ------ | ----- |
-| `07-add-revision-sign-off` | Go, recorded on 2026-11-13. Not started. |
-
-Delete a row from the table above when its change is archived.
+**Fork rule files.** The fork adds these files under `.claude/rules/`, each loaded when a file matching its `paths:` is read: `print` (the print-only page header), `fork-release` (the version scheme and the release workflow) and `page-sign-off` (approvers signing each version of a page). The list under "Per subsystem" above is upstream text, so a fork rule file is named here and not there.
 
 **Agents** are in `.claude/agents/`: `spec-creator` writes a new change, `feature-builder` builds one change through `code-implementer` and `code-reviewer` with a verification gate, and `spec-finalizer` verifies, syncs and archives a finished change. `.claude/workflows/feature-delivery-verification-gated.js` is the deterministic twin of `feature-builder`, so keep the two in sync. `.claude/workflows/verification-repair.js` repairs check failures that already exist in the tree, with no OpenSpec change.
 

@@ -56,6 +56,10 @@ it is; what follows is what is easy to get wrong.
   shared with `emailsFailed24h`. Change it there, not in either caller. The dismissal is
   instance-wide (`notifications.mailAlertDismissedAt`, default in `base.yml`) and stays out of
   `NOTIFICATION_SETTINGS_FIELDS`, so the settings screen never sets or clears it.
+- **Sign-off** has two `reviews` categories: `signOffRequested` (`page:signOffRequest`, to the
+  current approvers, emitted by `pageSignOff.versionRecorded` only for a live page) and
+  `signOffChangesRequested` (`page:signOffChanges`, to the version's author and the page owners). See
+  [Page sign-off](./page-sign-off.md).
 - **A section can be narrowed instance-wide** — `notifications.sections`, each `off` / `inApp` /
   `email` — as a master switch that never touches `userNotificationPrefs`. Anything new that acts on a
   person's choice asks `deliveryFor(section)` as well, as the Profile screen, `emit()`, the fan-out and

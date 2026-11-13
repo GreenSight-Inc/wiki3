@@ -50,8 +50,9 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          if ! out=$(node dev/ci/fork-version.mjs "$TAG" 2>&1); then
-            echo "::error::$out"
+          # stderr goes to a file, so that only the parsed lines can reach GITHUB_OUTPUT.
+          if ! out=$(node dev/ci/fork-version.mjs "$TAG" 2> "$RUNNER_TEMP/fork-version.err"); then
+            echo "::error::$(cat "$RUNNER_TEMP/fork-version.err")"
             exit 1
           fi
           echo "$out" >> "$GITHUB_OUTPUT"
@@ -107,6 +108,8 @@ jobs:
           IMAGE: ${{ steps.image.outputs.image }}
           IMAGE_TAG: ${{ steps.parse.outputs.image_tag }}
         run: |
+          # Any failure of the inspect reads as "tag absent", a registry error included. The push
+          # then fails on its own if the registry is unreachable.
           if docker buildx imagetools inspect "$IMAGE:$IMAGE_TAG" > /dev/null 2>&1; then
             echo "::error::Image tag $IMAGE:$IMAGE_TAG already exists. A published tag is never overwritten, so release the next jp number."
             exit 1

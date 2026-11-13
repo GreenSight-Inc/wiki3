@@ -118,6 +118,10 @@ defaults:
         discussions: 'email'
         reviews: 'email'
         everything: 'email'
+      # When an administrator last dismissed the mail failure banner, as an ISO 8601 time. Set only
+      # by the dismiss route, for every administrator at once: a notification entry that failed and
+      # was last updated before it no longer raises the banner. Null until the first dismissal.
+      mailAlertDismissedAt: null
     scim:
       # SCIM 2.0 provisioning, served at /_scim/v2. Off by default: it is a directory's write access
       # to the wiki's user and group lists, and nothing about it is useful until an administrator has

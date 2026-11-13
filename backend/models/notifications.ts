@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm'
+import type { SQL } from 'drizzle-orm'
 import {
   notificationEvents as eventsTable,
   notifications as notificationsTable,
@@ -57,6 +58,14 @@ const INBOX_PAGE_MAX = 100
 
 /** How an event came about, when something further up the call chain has said. See `withOrigin`. */
 const originScope = new AsyncLocalStorage<EventOrigin>()
+
+/**
+ * Entries whose email was given up on, last updated at or after `since`. The one definition of a
+ * recent mail failure, shared by the failed count on Admin → Notifications and the mail alert banner.
+ */
+function failedSinceCondition(since: SQL) {
+  return and(eq(notificationsTable.emailState, 'failed'), gte(notificationsTable.updatedAt, since))
+}
 
 /** A page, in whatever shape a model has it in hand. */
 interface PageLike {
@@ -758,12 +767,7 @@ class Notifications {
       WIKI.db
         .select({ total: count() })
         .from(notificationsTable)
-        .where(
-          and(
-            eq(notificationsTable.emailState, 'failed'),
-            gte(notificationsTable.updatedAt, dayAgo)
-          )
-        )
+        .where(failedSinceCondition(dayAgo))
     ])
 
     const warnings: string[] = []
@@ -783,6 +787,41 @@ class Notifications {
       isMailConfigured: WIKI.models.mail.isConfigured,
       warnings
     }
+  }
+
+  /**
+   * What the mail failure banner shows: the entries given up on in the last 24 hours, as the failed
+   * count on Admin → Notifications has them, less those last updated before the last dismissal.
+   */
+  async mailAlert(): Promise<{ failedCount: number; dismissedAt: string | null }> {
+    const dismissedAt: string | null = WIKI.config.notifications?.mailAlertDismissedAt ?? null
+    const since = dismissedAt
+      ? sql`greatest(now() - interval '24 hours', ${dismissedAt}::timestamptz)`
+      : sql`now() - interval '24 hours'`
+    const [failed] = await WIKI.db
+      .select({ total: count() })
+      .from(notificationsTable)
+      .where(failedSinceCondition(since))
+    return { failedCount: Number(failed?.total ?? 0), dismissedAt }
+  }
+
+  /**
+   * Hide the mail failure banner for every administrator until an entry fails again. The time is
+   * kept in the `notifications` settings blob, outside the fields the admin screen saves.
+   *
+   * @returns Whether the dismissal was saved
+   */
+  async dismissMailAlert(): Promise<boolean> {
+    const previous = WIKI.config.notifications
+    WIKI.config.notifications = {
+      ...previous,
+      mailAlertDismissedAt: Temporal.Now.instant().toString({ smallestUnit: 'millisecond' })
+    }
+    if (!(await WIKI.configSvc.saveToDb(['notifications']))) {
+      WIKI.config.notifications = previous
+      return false
+    }
+    return true
   }
 
   // == HOUSEKEEPING ===================

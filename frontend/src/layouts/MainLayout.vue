@@ -2,6 +2,7 @@
   <w-layout>
     <w-header class="site-header-wrap">
       <header-nav />
+      <mail-alert-banner />
     </w-header>
     <!--
       In the interface's language and direction. Which edge of the window the drawer sits on is the
@@ -192,6 +193,7 @@ import { useUserStore } from '@/stores/user'
 
 import HeaderNav from '@/components/HeaderNav.vue'
 import LocaleSelectorMenu from '@/components/LocaleSelectorMenu.vue'
+import MailAlertBanner from '@/components/MailAlertBanner.vue'
 import NavBrowseMenu from '@/components/NavBrowseMenu.vue'
 import NavSidebar from '@/components/NavSidebar.vue'
 import NavEditMenu from '@/components/NavEditMenu.vue'

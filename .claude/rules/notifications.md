@@ -11,6 +11,7 @@ paths:
   - "frontend/src/pages/ProfileNotifications.vue"
   - "frontend/src/pages/Unsubscribe.vue"
   - "frontend/src/stores/notifications.js"
+  - "frontend/src/components/MailAlertBanner.vue"
 ---
 
 # Notifications
@@ -49,6 +50,12 @@ it is; what follows is what is easy to get wrong.
   deliberately not `auth.secret` (which rotating the sessions replaces). A GET of the link only redirects to `/_unsubscribe`, which asks.
 - **The site switch is `features.notifications`**; the instance settings (retention, email delay, mail
   batch size) are **Admin → Notifications**, `GET`/`PUT /system/notifications`, behind `manage:system`.
+- **The mail failure banner** (`MailAlertBanner.vue` in `MainLayout.vue`) shows a `manage:system`
+  session the failed entries of the last 24 hours since the last dismissal, from
+  `GET /system/notifications/mail-alert`. `failedSinceCondition` is the one definition of a failure,
+  shared with `emailsFailed24h`. Change it there, not in either caller. The dismissal is
+  instance-wide (`notifications.mailAlertDismissedAt`, default in `base.yml`) and stays out of
+  `NOTIFICATION_SETTINGS_FIELDS`, so the settings screen never sets or clears it.
 - **A section can be narrowed instance-wide** — `notifications.sections`, each `off` / `inApp` /
   `email` — as a master switch that never touches `userNotificationPrefs`. Anything new that acts on a
   person's choice asks `deliveryFor(section)` as well, as the Profile screen, `emit()`, the fan-out and

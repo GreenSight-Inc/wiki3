@@ -160,4 +160,25 @@ export async function registerSchemas(app: FastifyInstance): Promise<void> {
       }
     }
   })
+
+  /**
+   * NOTIFICATION MAIL ALERT - What the mail failure banner shows administrators
+   */
+  app.addSchema({
+    $id: 'NotificationMailAlert',
+    type: 'object',
+    properties: {
+      failedCount: {
+        type: 'integer',
+        description:
+          'Notifications given up on after repeated failures to email them, in the last 24 hours and since the last dismissal. Counted as `emailsFailed24h` is, per notification rather than per email.'
+      },
+      dismissedAt: {
+        type: 'string',
+        format: 'date-time',
+        nullable: true,
+        description: 'When an administrator last dismissed the alert, for every administrator.'
+      }
+    }
+  })
 }

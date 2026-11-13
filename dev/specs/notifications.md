@@ -781,6 +781,7 @@ the per-site switch ([§11](#11-the-site-switch)).
 | `notifications.mailBatchSize` | 100 | Users per mail run. Raise it for a mail server that can take more, lower it for one that throttles. The API refuses anything outside 1–1000 | Same |
 | `notifications.sections` | `email` for each of `watching`, `discussions`, `reviews`, `everything` | What each section of Profile → Notifications may deliver: `off`, `inApp` or `email`. A master switch over the users' choices, never written into them ([§12.3](#123-what-a-section-may-deliver)) | Same |
 | `notifications.unsubscribeSecret` | generated on boot when missing | Signs unsubscribe tokens ([§10.4](#104-one-click-unsubscribe-rfc-8058)) | Settings blob, never returned by the API |
+| `notifications.mailAlertDismissedAt` | null (`base.yml`) | When an administrator last dismissed the mail failure banner, an ISO 8601 time, for every administrator at once ([§12.2](#122-admin--notifications)) | Settings blob, set only by the dismiss route. Not in `NOTIFICATION_SETTINGS_FIELDS`, so the settings `PUT` neither sets nor clears it |
 
 ### 12.2 Admin → Notifications
 
@@ -806,6 +807,18 @@ routes are. The screen has two cards:
 
 This is also where any later instance-wide setting goes, for example turning a category off for the
 whole instance.
+
+**The mail failure banner** (`components/MailAlertBanner.vue`, in `MainLayout.vue` under the header
+nav) tells an administrator who never opens this screen that notification email is failing. It
+shows to a session holding `manage:system` only, and asks once per app load:
+`GET /_api/system/notifications/mail-alert` answers `{ failedCount, dismissedAt }`, one count over
+the same condition as the failed figure above (`failedSinceCondition` in `models/notifications.ts`),
+with the window starting at the later of 24 hours ago and the last dismissal. Its Dismiss button calls
+`POST /_api/system/notifications/mail-alert/dismiss`, which writes `notifications.mailAlertDismissedAt`
+for the whole instance and is audited (kind `admin`, action `dismissMailAlert`). Both routes take
+`manage:system` and no token scope. The unit is a notification entry, as for the failed figure, so
+the banner says "notifications" rather than "emails". An entry last updated before a dismissal that
+fails after it does not raise the banner again. The failed figure here still counts it.
 
 ### 12.3 What a section may deliver
 

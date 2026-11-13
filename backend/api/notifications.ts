@@ -581,6 +581,66 @@ async function routes(app: FastifyInstance) {
       return { ok: true, message: 'Notification settings saved successfully.' }
     }
   )
+
+  /**
+   * GET MAIL ALERT
+   */
+  app.get(
+    '/system/notifications/mail-alert',
+    {
+      config: {
+        permissions: ['manage:system']
+      },
+      schema: {
+        summary: 'Get the mail failure alert',
+        description:
+          'How many notifications were given up on in the last 24 hours and since the last dismissal, for the banner the main layout shows administrators. One count, so that it is cheap enough to ask on every app load.',
+        tags: ['Notifications'],
+        response: {
+          200: { $ref: 'NotificationMailAlert#' }
+        }
+      }
+    },
+    async (_req, reply) => {
+      reply.preventCache()
+      return WIKI.models.notifications.mailAlert()
+    }
+  )
+
+  /**
+   * DISMISS MAIL ALERT
+   */
+  app.post(
+    '/system/notifications/mail-alert/dismiss',
+    {
+      config: {
+        permissions: ['manage:system']
+      },
+      schema: {
+        summary: 'Dismiss the mail failure alert',
+        description:
+          'Hides the banner for every administrator until a notification last updated after now is given up on. The failed count on Admin → Notifications is unaffected.',
+        tags: ['Notifications'],
+        response: {
+          200: {
+            description: 'Dismissed',
+            type: 'object',
+            properties: {
+              ok: { type: 'boolean' },
+              message: { type: 'string' }
+            }
+          }
+        }
+      }
+    },
+    async (req, reply) => {
+      if (!(await WIKI.models.notifications.dismissMailAlert())) {
+        return reply.internalServerError('Failed to dismiss the mail alert.')
+      }
+      await audit(req, 'admin', 'dismissMailAlert', {})
+      return { ok: true, message: 'Mail alert dismissed successfully.' }
+    }
+  )
 }
 
 export default routes

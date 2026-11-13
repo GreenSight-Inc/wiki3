@@ -81,7 +81,7 @@ Next to the `admin.notifications.*` neighbors in `backend/locales/en.json`:
 
 | Key | English |
 | --- | ------- |
-| `admin.notifications.mailAlert.message` | `Notification email is failing. {count} notifications were not emailed in the last 24 hours.` |
+| `admin.notifications.mailAlert.message` | `Notification email is failing. {count} notification was not emailed in the last 24 hours. \| Notification email is failing. {count} notifications were not emailed in the last 24 hours.`, a plural pair, called with the count as the plural choice |
 | `admin.notifications.mailAlert.openSettings` | `Notification Settings` |
 | `admin.notifications.mailAlert.dismiss` | `Dismiss` |
 | `admin.notifications.mailAlert.dismissFailed` | `Failed to dismiss the mail alert.` |

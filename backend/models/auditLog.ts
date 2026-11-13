@@ -170,6 +170,7 @@ export const AUDIT_ACTIONS = {
     'updateApiState',
     'updateMetricsState',
     'updateNotificationSettings',
+    'dismissMailAlert',
     'updateScimState',
     'updateMcp',
     'disconnectWebsockets',
